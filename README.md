@@ -1,6 +1,6 @@
 # Documentation du Projet MedicSearch
 
-Ce dépôt regroupe un ensemble d’outils et d’applications visant à extraire, nettoyer et exploiter des données liées aux médicaments et à leurs effets indésirables. Le projet se décline en plusieurs sous-parties et outils, allant du scraping et traitement de données à une interface web destinée aux utilisateurs finaux (notamment via la page dans le dossier Medisae).
+Ce dépôt regroupe un ensemble d’outils et d’applications visant à extraire, nettoyer et exploiter des données liées aux médicaments et à leurs effets indésirables. Le projet se décline en plusieurs sous-parties et outils, allant du scraping et traitement de données à une interface web destinée aux utilisateurs finaux (notamment via la page dans le dossier MedicSearch).
 
 ## Table des Matières
 
@@ -18,7 +18,7 @@ Ce dépôt regroupe un ensemble d’outils et d’applications visant à extrair
 
 ## Description Générale
 
-Le projet Medisae a pour objectif principal le traitement et la mise en forme de données relatives aux médicaments. Les principales opérations incluent :
+Le projet MedicSearch a pour objectif principal le traitement et la mise en forme de données relatives aux médicaments. Les principales opérations incluent :
 
 - **Extraction et Nettoyage** : Importation de données à partir de fichiers Excel et traitement par différentes fonctions Python.
 - **Scraping de Données** : Récupération de contenus depuis des pages web et des documents en utilisant divers scripts Python et PHP.
@@ -31,8 +31,9 @@ Le projet se divise en plusieurs dossiers et fichiers :
 
 - **Racine du projet** : Contient les fichiers principaux et les données d'entrée.
 - **Functions/** : Scripts Python pour le scraping, le nettoyage et la migration de données.
-- **Medisae/** : Interface web principale avec les fichiers PHP.
+- **MedicSearch/** : Interface web principale avec les fichiers PHP.
 - **Assets/** : Ressources et fichiers de support.
+- **Backup/** : Dossier où les données de sauvegarde doivent être chargées.
 
 ## Modules et Fonctionnalités
 
@@ -56,7 +57,7 @@ L'application web permet aux utilisateurs de naviguer et rechercher des informat
 
 ### Lancer l'Application Frontend
 
-1. Configurer un serveur web pour pointer vers `Medisae/` ou `Medisae2/`.
+1. Configurer un serveur web pour pointer vers `MedicSearch/`.
 2. Accéder à l'application via `http://localhost`.
 
 ### Exécuter les Scripts de Traitement
@@ -74,8 +75,7 @@ python Functions/nettoyage_liens_R.py
 ## Améliorations Futures
 
 - **Optimisation du Scraping** : Structurer les données pour une meilleure intégration.
-
-* **Base Vectorielle avec Machine Learning** : Améliorer la recherche grâce à des modèles de langage et de similarité.
+- **Base Vectorielle avec Machine Learning** : Améliorer la recherche grâce à des modèles de langage et de similarité.
 
 ## Contributions
 
@@ -88,4 +88,3 @@ python Functions/nettoyage_liens_R.py
 ## Licence
 
 Ce projet est sous licence [MIT](LICENSE).
-
