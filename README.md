@@ -22,7 +22,7 @@ Le projet MedicSearch a pour objectif principal le traitement et la mise en form
 
 - **Extraction et Nettoyage** : Importation de données à partir de fichiers Excel et traitement par différentes fonctions Python.
 - **Scraping de Données** : Récupération de contenus depuis des pages web et des documents en utilisant divers scripts Python et PHP.
-- **Migrations vers des Bases de Données** : Transfert des données scrappées vers MongoDB, Neo4j et PostgreSQL.
+- **Migrations vers des Bases de Données** : Transfert des données scrappées vers Neo4j et PostgreSQL.
 - **Interface Utilisateur** : Interfaces web pour la consultation des données traitées.
 
 ## Structure du Projet
@@ -100,6 +100,20 @@ Voici notre stratégie de déploiement adaptée pour le projet MedicSearch :
 
 - **Sécurité et Scalabilité**
   Même pour un projet universitaire, on prévoit une configuration sécurisée (certificats SSL, mises à jour automatiques, etc.) et une scalabilité horizontale limitée (auto-scaling gratuit dans une certaine mesure) pour supporter des charges importantes occasionnellement.
+
+### Améliorations avec LLM
+
+- **Entraînement du Modèle**
+  - **Préparation des Données** : On va structurer les données pour les rendre exploitables par le modèle.
+  - **Sélection du Modèle** : On va choisir un modèle adapté à nos besoins de recherche et de similarité.
+  - **Génération d'Embeddings** : On va créer des embeddings vectoriels pour améliorer la recherche par similarité.
+  - **Implémentation de la Fonctionnalité de Recherche** : On va intégrer cette fonctionnalité dans notre interface utilisateur pour une meilleure expérience de recherche.
+
+- **Bases de Données**
+  - **Base Documentaire (MongoDB)** : On va stocker les données structurées et non structurées.
+  - **Données Structurées** : On va organiser les données en tables pour faciliter les requêtes.
+  - **Base Vectorielle (Qdrant)** : On va utiliser des embeddings vectoriels pour la recherche par similarité.
+  - **Base de Données Graphique (Neo4j)** : On va stocker les relations entre les entités pour une meilleure compréhension des données.
 
 En résumé, pour un projet universitaire comme le nôtre, l’utilisation des services managés d’Azure ou d’AWS nous permet de réduire les efforts de gestion de l’infrastructure tout en garantissant une bonne scalabilité et sécurité. La combinaison d’un hébergement web (App Service/Elastic Beanstalk), d’une conteneurisation (Docker) et de bases gérées nous offrira une solution solide et adaptable pour nos besoins de développement et d’expérimentation.
 
