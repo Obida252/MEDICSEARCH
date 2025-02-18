@@ -12,7 +12,7 @@ Ce dépôt regroupe un ensemble d’outils et d’applications visant à extrair
   - [Migration et Transformation des Données](#migration-et-transformation-des-donnees)
   - [Interface Web et Frontend](#interface-web-et-frontend)
 - [Utilisation et Exécution](#utilisation-et-execution)
-- [Améliorations Futures](#ameliorations-futures)
+- [Tâches Restantes](#taches-restantes)
 - [Contributions](#contributions)
 - [Licence](#licence)
 
@@ -72,10 +72,36 @@ python Functions/nettoyage_liens_R.py
 2. Lancer `mongodb_to_neo4j.py` ou `mongodb_to_postgresql.py` selon la base de données cible.
 3. Utiliser `neo4j_import_script.py` pour vérifier l'importation.
 
-## Améliorations Futures
+## Tâches Restantes
 
 - **Optimisation du Scraping** : Structurer les données pour une meilleure intégration.
 - **Base Vectorielle avec Machine Learning** : Améliorer la recherche grâce à des modèles de langage et de similarité.
+
+### Stratégie de Déploiement
+
+Voici notre stratégie de déploiement adaptée pour le projet MedicSearch :
+
+- **Hébergement Web et API**
+  On va utiliser un service d’hébergement cloud managé comme [Azure App Service](https://azure.microsoft.com/fr-fr/services/app-service/) ou [AWS Elastic Beanstalk](https://aws.amazon.com/fr/elasticbeanstalk/). Ces services facilitent le déploiement et la gestion de nos applications web sans nous soucier de la gestion des serveurs.
+
+- **Conteneurisation**
+  On envisage d’encapsuler nos applications (scripts Python et PHP) dans des conteneurs Docker. Cela permettra une cohérence entre les environnements de développement et de production. On pourra ensuite déployer ces conteneurs via Azure Kubernetes Service (AKS) ou AWS Elastic Kubernetes Service (EKS) si nécessaire, ou plus simplement via Azure Container Instances ou AWS Fargate pour des charges moins importantes.
+
+- **Bases de données**
+  Pour les bases de données, on opte pour des solutions managées :
+  - **PostgreSQL** : On va utiliser [Azure Database for PostgreSQL](https://azure.microsoft.com/fr-fr/services/postgresql/) ou Amazon RDS pour PostgreSQL, pour simplifier la gestion des sauvegardes et la scalabilité.
+  - **Neo4j** : On va héberger notre instance Neo4j sur un serveur virtuel (VM) ou via une solution managée si disponible, en fonction des budgets et des contraintes du projet.
+
+- **Mises à jour et CI/CD**
+  On va intégrer une pipeline CI/CD (via GitHub Actions par exemple) pour automatiser les tests et déploiements. Azure et AWS offrent des intégrations directes pour faciliter cette approche.
+
+- **Budget et crédits universitaires**
+  On va profiter des crédits étudiants/mooc offerts par Azure et AWS. Ces offres nous permettent d’explorer et de tester ces services sans surcoût important.
+
+- **Sécurité et Scalabilité**
+  Même pour un projet universitaire, on prévoit une configuration sécurisée (certificats SSL, mises à jour automatiques, etc.) et une scalabilité horizontale limitée (auto-scaling gratuit dans une certaine mesure) pour supporter des charges importantes occasionnellement.
+
+En résumé, pour un projet universitaire comme le nôtre, l’utilisation des services managés d’Azure ou d’AWS nous permet de réduire les efforts de gestion de l’infrastructure tout en garantissant une bonne scalabilité et sécurité. La combinaison d’un hébergement web (App Service/Elastic Beanstalk), d’une conteneurisation (Docker) et de bases gérées nous offrira une solution solide et adaptable pour nos besoins de développement et d’expérimentation.
 
 ## Contributions
 
