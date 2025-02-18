@@ -22,7 +22,7 @@ Le projet MedicSearch a pour objectif principal le traitement et la mise en form
 
 - **Extraction et Nettoyage** : Importation de données à partir de fichiers Excel et traitement par différentes fonctions Python.
 - **Scraping de Données** : Récupération de contenus depuis des pages web et des documents en utilisant divers scripts Python et PHP.
-- **Migrations vers des Bases de Données** : Transfert des données scrappées vers Neo4j et PostgreSQL.
+- **Migrations vers des Bases de Données** : Transfert des données scrappées vers MongoDB, Neo4j et PostgreSQL.
 - **Interface Utilisateur** : Interfaces web pour la consultation des données traitées.
 
 ## Structure du Projet
