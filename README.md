@@ -32,7 +32,6 @@ Le projet se divise en plusieurs dossiers et fichiers :
 - **Racine du projet** : Contient les fichiers principaux et les données d'entrée.
 - **Functions/** : Scripts Python pour le scraping, le nettoyage et la migration de données.
 - **MedicSearch/** : Interface web principale avec les fichiers PHP.
-- **Assets/** : Ressources et fichiers de support.
 - **Backup/** : Dossier où les données de sauvegarde doivent être chargées.
 
 ## Modules et Fonctionnalités
@@ -91,9 +90,6 @@ Voici notre stratégie de déploiement adaptée pour le projet MedicSearch :
   Pour les bases de données, on opte pour des solutions managées :
   - **PostgreSQL** : On va utiliser [Azure Database for PostgreSQL](https://azure.microsoft.com/fr-fr/services/postgresql/) ou Amazon RDS pour PostgreSQL, pour simplifier la gestion des sauvegardes et la scalabilité.
   - **Neo4j** : On va héberger notre instance Neo4j sur un serveur virtuel (VM) ou via une solution managée si disponible, en fonction des budgets et des contraintes du projet.
-
-- **Mises à jour et CI/CD**
-  On va intégrer une pipeline CI/CD (via GitHub Actions par exemple) pour automatiser les tests et déploiements. Azure et AWS offrent des intégrations directes pour faciliter cette approche.
 
 - **Budget et crédits universitaires**
   On va profiter des crédits étudiants/mooc offerts par Azure et AWS. Ces offres nous permettent d’explorer et de tester ces services sans surcoût important.
