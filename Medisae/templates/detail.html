@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails du Médicament</title>
+</head>
+<body>
+    <h1>{{ medicament.nom }}</h1>
+
+    {% for section, content in medicament.items() %}
+        {% if section not in ['_id', 'nom'] %}
+            <h2>{{ section }}</h2>
+            {% if content.text %}
+                <p>{{ content.text }}</p>
+            {% endif %}
+            {% if content.tables %}
+                {% for table in content.tables %}
+                    <table border="1">
+                        {% for row in table %}
+                            <tr>
+                                {% for key, value in row.items() %}
+                                    {% if loop.first %}
+                                        <th>{{ key }}</th>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                {% for value in row.values() %}
+                                    <td>{{ value }}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </table>
+                    <br>
+                {% endfor %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+</body>
+</html>

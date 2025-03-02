@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des Médicaments</title>
+</head>
+<body>
+    <h1>Liste des Médicaments</h1>
+    <ul>
+        {% for medicament in medicaments %}
+            <li><a href="{{ url_for('medicament_detail', specid=medicament._id) }}">{{ medicament.nom }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
