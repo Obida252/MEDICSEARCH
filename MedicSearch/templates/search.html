@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDICSEARCH • Recherche</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="header-grid">
+            <div class="logo">
+                <h1>MEDICSEARCH</h1>
+                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/">ACCUEIL</a></li>
+                    <li><a href="/search" class="active">RECHERCHE</a></li>
+                    <li><a href="/#about">À PROPOS</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="search-banner">
+            <div class="container">
+                <h2>RECHERCHE DE MÉDICAMENTS</h2>
+                <p>Trouvez des informations complètes sur les médicaments disponibles dans notre base de données</p>
+            </div>
+        </section>
+        
+        <section class="search-section">
+            <div class="container">
+                <form class="search-form" method="GET" action="/search">
+                    <input type="text" name="search" placeholder="Nom du médicament ou ingrédient actif..." value="{{ search }}">
+                    <button type="submit">RECHERCHER</button>
+                    
+                    <div class="advanced-search-toggle">
+                        <input type="checkbox" id="show-filters" class="toggle-checkbox" {% if advanced_search %}checked{% endif %} onclick="toggleFilters()">
+                        <label for="show-filters" class="toggle-label">RECHERCHE AVANCÉE</label>
+                    </div>
+                    
+                    <div id="advanced-filters" class="advanced-filters {% if not advanced_search %}hidden{% endif %}">
+                        <div class="filters-row">
+                            <div class="filter-group">
+                                <label for="substance">SUBSTANCE ACTIVE</label>
+                                <select name="substance" id="substance">
+                                    <option value="">Toutes les substances</option>
+                                    {% for substance_name in available_filters.substances %}
+                                        <option value="{{ substance_name }}" {% if substance == substance_name %}selected{% endif %}>{{ substance_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="forme">FORME PHARMACEUTIQUE</label>
+                                <select name="forme" id="forme">
+                                    <option value="">Toutes les formes</option>
+                                    {% for forme_name in available_filters.formes %}
+                                        <option value="{{ forme_name }}" {% if forme == forme_name %}selected{% endif %}>{{ forme_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="filters-row">
+                            <div class="filter-group">
+                                <label for="voie_admin">VOIE D'ADMINISTRATION</label>
+                                <select name="voie_admin" id="voie_admin">
+                                    <option value="">Toutes les voies</option>
+                                    {% for voie in available_filters.voies_admin %}
+                                        <option value="{{ voie }}" {% if voie_admin == voie %}selected{% endif %}>{{ voie }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="classe_atc">CLASSE THÉRAPEUTIQUE</label>
+                                <select name="classe_atc" id="classe_atc">
+                                    <option value="">Toutes les classes</option>
+                                    {% for classe in available_filters.classes_atc %}
+                                        <option value="{{ classe.code }}" {% if classe_atc == classe.code %}selected{% endif %}>{{ classe.code }} - {{ classe.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="filters-row">
+                            <div class="filter-group">
+                                <label for="sort">TRIER PAR</label>
+                                <select name="sort" id="sort">
+                                    <option value="relevance" {% if sort == 'relevance' %}selected{% endif %}>Pertinence</option>
+                                    <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Nom (A-Z)</option>
+                                    <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Nom (Z-A)</option>
+                                    <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Date (récent)</option>
+                                    <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (ancien)</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-actions">
+                            <button type="submit" class="filter-btn">APPLIQUER LES FILTRES</button>
+                            <a href="/search" class="reset-filter">RÉINITIALISER</a>
+                        </div>
+                    </div>
+                    
+                    {% if search %}
+                        <a href="/search" class="reset-btn">RÉINITIALISER LA RECHERCHE</a>
+                    {% endif %}
+                </form>
+            </div>
+        </section>
+        
+        <section class="results-section">
+            <div class="container">
+                <div class="results-container">
+                    <h2>RÉSULTATS DE RECHERCHE</h2>
+                    
+                    <div class="stat-card">
+                        <span class="stat-number">{{ medicines|length }}</span>
+                        <span class="stat-label">MÉDICAMENT(S) TROUVÉ(S)</span>
+                    </div>
+
+                    {% if medicines|length > 0 %}
+                    <ul class="medicine-list">
+                        {% for medicine in medicines %}
+                            <li class="medicine-item">
+                                <a href="/medicine/{{ medicine['_id'] }}" class="medicine-link">
+                                    <div class="medicine-info">
+                                        <h3 class="medicine-title">{{ medicine['name'] }}</h3>
+                                        <div class="medicine-meta">
+                                            <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: {{ medicine.get('update_date', 'Non disponible') }}</span>
+                                            {% if medicine.get('search_match') %}
+                                            <span class="medicine-match"><i class="fas fa-search medicine-icon"></i> Trouvé dans: {{ medicine.get('search_match') }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <span class="arrow-icon">&rarr;</span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                        <div class="no-results">
+                            <div class="no-results-icon"><i class="fas fa-search"></i></div>
+                            <h3 class="no-results-title">AUCUN MÉDICAMENT TROUVÉ</h3>
+                            <p class="no-results-message">Essayez d'autres termes de recherche ou vérifiez l'orthographe.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>MEDICSEARCH</h4>
+                <p>Une référence pour l'information médicamenteuse.</p>
+                <p>Développé selon les principes du Swiss Design.</p>
+            </div>
+            <div class="footer-col">
+                <h4>NAVIGATION</h4>
+                <ul>
+                    <li><a href="/">Accueil</a></li>
+                    <li><a href="/search">Recherche</a></li>
+                    <li><a href="/#about">À propos</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>PROJET</h4>
+                <ul>
+                    <li><i class="fas fa-code"></i> SAE5.01</li>
+                    <li><i class="fas fa-university"></i> IUT Sénart-Fontainebleau</li>
+                    <li><i class="fas fa-calendar-alt"></i> 2023</li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2023 MedicSearch. Projet académique.</p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleFilters() {
+            const filtersContainer = document.getElementById('advanced-filters');
+            if (filtersContainer.classList.contains('hidden')) {
+                filtersContainer.classList.remove('hidden');
+                filtersContainer.classList.add('visible');
+            } else {
+                filtersContainer.classList.remove('visible');
+                filtersContainer.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>

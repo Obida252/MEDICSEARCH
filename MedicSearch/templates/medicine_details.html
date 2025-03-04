@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ medicine['name'] }} - MedicSearch</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/medicine_details.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="header-grid">
+            <div class="logo">
+                <h1>MEDICSEARCH</h1>
+                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/">ACCUEIL</a></li>
+                    <li><a href="/search">RECHERCHE</a></li>
+                    <li><a href="/#about">À PROPOS</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="medicine-banner">
+            <div class="container">
+                <h2>{{ medicine['name'] }}</h2>
+                <div class="medicine-meta">
+                    <span class="update-info">Mise à jour: {{ medicine['update_date'] }}</span>
+                    <span class="source-url">Source: <a href="{{ medicine['url'] }}" target="_blank">Base de données publique des médicaments</a></span>
+                </div>
+            </div>
+        </section>
+
+        <section class="medicine-content">
+            <div class="container">
+                <!-- Onglets de navigation -->
+                <div class="nav-tabs">
+                    <div class="nav-tab active" onclick="showTab('summary')">Résumé</div>
+                    <div class="nav-tab" onclick="showTab('sections')">Sections détaillées</div>
+                    <div class="nav-tab" onclick="showTab('raw-data')">Données techniques</div>
+                </div>
+
+                <!-- Contenu des onglets -->
+                <!-- Onglet de résumé -->
+                <div id="summary" class="tab-content active">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>Résumé du médicament</h3>
+                        </div>
+                        <div class="card-body">
+                            {% if medicine.get('sections') %}
+                                <!-- Dénomination -->
+                                {% set denomination_found = false %}
+                                {% for section_title, section in medicine['sections'].items() %}
+                                    {% if section_title.startswith('1.') and ('DÉNOMINATION' in section_title.upper() or 'DENOMINATION' in section_title.upper()) %}
+                                        {% set denomination_found = true %}
+                                        <div class="summary-section">
+                                            <h4>Dénomination</h4>
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <div class="plain-text"><strong>{{ content_item['text'] }}</strong></div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <!-- Forme pharmaceutique -->
+                                {% set form_found = false %}
+                                {% for section_title, section in medicine['sections'].items() %}
+                                    {% if section_title.startswith('3.') and ('FORME' in section_title.upper()) %}
+                                        {% set form_found = true %}
+                                        <div class="summary-section">
+                                            <h4>Forme pharmaceutique</h4>
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <div class="plain-text">{{ content_item['text'] }}</div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <!-- Composition -->
+                                {% set composition_found = false %}
+                                {% for section_title, section in medicine['sections'].items() %}
+                                    {% if section_title.startswith('2.') and ('COMPOSITION' in section_title.upper()) %}
+                                        {% set composition_found = true %}
+                                        <div class="summary-section">
+                                            <h4>Composition</h4>
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <div class="plain-text">{{ content_item['text'] }}</div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <!-- Indications thérapeutiques -->
+                                {% set indications_found = false %}
+                                {% for section_title, section in medicine['sections'].items() %}
+                                    {% if section_title.startswith('4.1') and ('INDICATIONS' in section_title.upper()) %}
+                                        {% set indications_found = true %}
+                                        <div class="summary-section">
+                                            <h4>Indications thérapeutiques</h4>
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <div class="plain-text">{{ content_item['text'] }}</div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                <!-- Contre-indications -->
+                                {% set contre_indications_found = false %}
+                                {% for section_title, section in medicine['sections'].items() %}
+                                    {% if section_title.startswith('4.3') and ('CONTRE-INDICATIONS' in section_title.upper() or 'CONTRE INDICATIONS' in section_title.upper()) %}
+                                        {% set contre_indications_found = true %}
+                                        <div class="summary-section">
+                                            <h4>Contre-indications</h4>
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <div class="plain-text">{{ content_item['text'] }}</div>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if not denomination_found and not composition_found and not indications_found and not contre_indications_found and not form_found %}
+                                    <div class="no-data-message">
+                                        <i class="fas fa-exclamation-circle"></i>
+                                        <p>Aucune information résumée disponible pour ce médicament.</p>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="no-data-message">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <p>Aucune information résumée disponible pour ce médicament.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Onglet sections détaillées -->
+                <div id="sections" class="tab-content">
+                    {% if medicine.get('sections') %}
+                        {% for section_title, section in medicine['sections'].items() %}
+                            <div class="content-card">
+                                <div class="card-header">
+                                    <h3>{{ section_title }}</h3>
+                                </div>
+                                
+                                <div class="card-body">
+                                    {% if section.get('content') %}
+                                        <div class="content-item">
+                                            {% for content_item in section['content'] %}
+                                                {% if content_item.get('table') %}
+                                                    <table class="medicine-table">
+                                                        {% for row in content_item['table'] %}
+                                                            <tr>
+                                                                {% for cell in row %}
+                                                                    <td>{{ cell }}</td>
+                                                                {% endfor %}
+                                                            </tr>
+                                                        {% endfor %}
+                                                    </table>
+                                                    <br>
+                                                {% elif content_item.get('text') %}
+                                                    {% if content_item.get('html_content') %}
+                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
+                                                    {% else %}
+                                                        <p class="plain-text">{{ content_item['text'] }}</p>
+                                                    {% endif %}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <div class="no-data-message">
+                                            <i class="fas fa-info-circle"></i>
+                                            <p>Cette section ne contient pas de contenu.</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="content-card">
+                            <div class="card-header">
+                                <h3>Information</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="no-data-message">
+                                    <i class="fas fa-info-circle"></i>
+                                    <p>Ce document ne contient pas de sections structurées.</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Onglet données techniques -->
+                <div id="raw-data" class="tab-content">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>Données brutes</h3>
+                            <div class="debug-actions">
+                                <button class="debug-toggle" onclick="toggleDebug()">
+                                    <i class="fas fa-code"></i> Afficher JSON
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="debug-section" id="debug-section">
+                                <pre>{{ medicine_json }}</pre>
+                            </div>
+                            
+                            <div class="url-info">
+                                <i class="fas fa-link"></i> URL source: 
+                                <a href="{{ medicine['url'] }}" target="_blank" rel="noopener noreferrer">
+                                    {{ medicine['url'] }}
+                                </a>
+                            </div>
+                            
+                            <div class="data-info">
+                                <i class="fas fa-database"></i> Base de données: medicine_data64
+                            </div>
+                            
+                            <div class="id-info">
+                                <i class="fas fa-fingerprint"></i> ID du document: {{ medicine['_id'] }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>MEDICSEARCH</h4>
+                <p>Une référence pour l'information médicamenteuse.</p>
+                <p>Développé selon les principes du Swiss Design.</p>
+            </div>
+            <div class="footer-col">
+                <h4>NAVIGATION</h4>
+                <ul>
+                    <li><a href="/">Accueil</a></li>
+                    <li><a href="/search">Recherche</a></li>
+                    <li><a href="/#about">À propos</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>PROJET</h4>
+                <ul>
+                    <li><i class="fas fa-code"></i> SAE5.01</li>
+                    <li><i class="fas fa-university"></i> IUT Sénart-Fontainebleau</li>
+                    <li><i class="fas fa-calendar-alt"></i> 2023</li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2023 MedicSearch. Projet académique.</p>
+        </div>
+    </footer>
+    
+    <script>
+        function toggleDebug() {
+            const debugSection = document.getElementById('debug-section');
+            if (debugSection.style.display === 'none' || !debugSection.style.display) {
+                debugSection.style.display = 'block';
+                document.querySelector('.debug-toggle').innerHTML = '<i class="fas fa-code"></i> Masquer JSON';
+            } else {
+                debugSection.style.display = 'none';
+                document.querySelector('.debug-toggle').innerHTML = '<i class="fas fa-code"></i> Afficher JSON';
+            }
+        }
+        
+        function showTab(tabId) {
+            // Masquer tous les contenus d'onglets
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Désactiver tous les onglets
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Activer l'onglet cliqué
+            document.getElementById(tabId).classList.add('active');
+            
+            // Trouver l'élément cliqué et l'activer
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                if (tab.textContent.toLowerCase().includes(tabId.replace('-', ' '))) {
+                    tab.classList.add('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

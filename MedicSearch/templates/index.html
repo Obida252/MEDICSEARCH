@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDICSEARCH • Base de données médicamenteuse</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="header-grid">
+            <div class="logo">
+                <h1>MEDICSEARCH</h1>
+                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
+            </div>
+            <nav>
+                <ul>
+                    <li><a href="/" class="active">ACCUEIL</a></li>
+                    <li><a href="/search">RECHERCHE</a></li>
+                    <li><a href="#about">À PROPOS</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h2>DÉCOUVREZ LES MÉDICAMENTS</h2>
+                <p>ACCÈS À DES MILLIERS D'INFORMATIONS MÉDICAMENTEUSES</p>
+                <a href="/search" class="btn-primary">COMMENCER LA RECHERCHE</a>
+            </div>
+        </section>
+
+        <section id="statistics" class="statistics">
+            <div class="container">
+                <h2>NOTRE BASE DE DONNÉES</h2>
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <span class="stat-number">2K+</span>
+                        <span class="stat-label">MÉDICAMENTS</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">100%</span>
+                        <span class="stat-label">DONNÉES FIABLES</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">24/7</span>
+                        <span class="stat-label">ACCESSIBILITÉ</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">20+</span>
+                        <span class="stat-label">CATÉGORIES</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="featured-attractions">
+            <div class="container">
+                <h2>FONCTIONNALITÉS PRINCIPALES</h2>
+                <div class="attraction-grid">
+                    <div class="attraction">
+                        <img src="https://images.unsplash.com/photo-1607619056574-7b8d3ee536b2?auto=format&fit=crop&w=600&q=80" alt="Recherche avancée">
+                        <h3>RECHERCHE AVANCÉE</h3>
+                        <div class="stats">
+                            <span class="rating">Intuitive et rapide</span>
+                        </div>
+                    </div>
+                    <div class="attraction">
+                        <img src="https://images.unsplash.com/photo-1585435557343-3b348a90fe8a?auto=format&fit=crop&w=600&q=80" alt="Informations détaillées">
+                        <h3>INFORMATIONS DÉTAILLÉES</h3>
+                        <div class="stats">
+                            <span class="rating">Données complètes</span>
+                        </div>
+                    </div>
+                    <div class="attraction">
+                        <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=600&q=80" alt="Base de données à jour">
+                        <h3>BASE DE DONNÉES À JOUR</h3>
+                        <div class="stats">
+                            <span class="rating">Mises à jour régulières</span>
+                        </div>
+                    </div>
+                </div>
+                <a href="/search" class="btn-secondary">EXPLORER LA BASE DE DONNÉES</a>
+            </div>
+        </section>
+
+        <section id="about" class="about">
+            <div class="container">
+                <div class="about-content">
+                    <div class="about__text">
+                        <h2>À PROPOS DE MEDICSEARCH</h2>
+                        <p>MEDICSEARCH est une initiative académique développée dans le cadre de la SAE5.01 pour fournir un accès facile et fiable aux informations médicamenteuses.</p>
+                        <p>Notre objectif est de centraliser et de rendre accessibles les données sur les médicaments, permettant aux utilisateurs de trouver rapidement les informations dont ils ont besoin.</p>
+                        <a href="/search" class="btn-primary">COMMENCER LA RECHERCHE</a>
+                    </div>
+                    <div class="about__image">
+                        <img src="https://images.unsplash.com/photo-1573883430697-4c3479aae6b9?auto=format&fit=crop&w=800&q=80" alt="Recherche médicale">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <h4>MEDICSEARCH</h4>
+                <p>Une référence pour l'information médicamenteuse.</p>
+            </div>
+            <div class="footer-col">
+                <h4>NAVIGATION</h4>
+                <ul>
+                    <li><a href="/">Accueil</a></li>
+                    <li><a href="/search">Recherche</a></li>
+                    <li><a href="#about">À propos</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>PROJET</h4>
+                <ul>
+                    <li><i class="fas fa-code"></i> SAE5.01 - MedicSearch</li>
+                    <li><i class="fas fa-university"></i> IUT Créteil-Vitry</li>
+                    <li><i class="fas fa-calendar-alt"></i> 2025</li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            <p>&copy; 2025 MedicSearch. Projet académique.</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Smooth scrolling pour les ancres
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
