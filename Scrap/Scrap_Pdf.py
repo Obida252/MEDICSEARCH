@@ -1,152 +1,170 @@
-import os
 import requests
+import fitz  # PyMuPDF pour l'extraction des PDFs
+import pytesseract  # OCR pour les PDF scannés
+from pdf2image import convert_from_bytes
 import pandas as pd
-import pymongo
-import fitz  # PyMuPDF pour l'extraction de texte et d'images
 import base64
-import re
-import pdfplumber
-import concurrent.futures
+from io import BytesIO
+from pymongo import MongoClient
 from PIL import Image
-import io
 
-# Connexion à MongoDB
-client = pymongo.MongoClient("mongodb://localhost:27017/")
+# Configurer le chemin de Tesseract si nécessaire
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+# Connexion MongoDB
+client = MongoClient("mongodb://localhost:27017/")
 db = client["Pharmacie"]
-collection = db["Documents"]
+collection = db["PDF"]
 
-# Définition des chemins
-PDF_DIR = os.path.abspath(r"C:\Document\IUT\SAE\pdf_files")
-EXCEL_PATH = os.path.abspath(r"C:\Document\IUT\SAE\liens_pdf.xlsx")
+# Charger les URLs des PDFs depuis l'Excel (sélection des 10 premiers)
+excel_file = r"C:\Document\IUT\SAE\liens_pdf.xlsx"
+df = pd.read_excel(excel_file)
 
-# Création du dossier PDF s'il n'existe pas
-os.makedirs(PDF_DIR, exist_ok=True)
+if 'liens' not in df.columns:
+    raise ValueError("Le fichier Excel ne contient pas de colonne 'liens'.")
 
-# Charger les liens depuis l'Excel et limiter à 10
-df = pd.read_excel(EXCEL_PATH).head(10)
+urls = df["liens"].head(10).tolist()
 
-def clean_filename(filename):
-    """Supprime les caractères spéciaux du nom du fichier"""
-    return re.sub(r'[\\/*?:"<>|,]', "_", filename)
+# User-Agent pour éviter le blocage
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+}
 
-def download_pdf(pdf_url, save_path):
-    """Télécharge un PDF depuis une URL"""
+# Sections cibles pour structurer les médicaments
+TARGET_SECTIONS = [
+    "1. DÉNOMINATION DU MÉDICAMENT", "2. COMPOSITION QUALITATIVE ET QUANTITATIVE",
+    "3. FORME PHARMACEUTIQUE", "4. DONNÉES CLINIQUES", "5. PROPRIÉTÉS PHARMACOLOGIQUES",
+    "6. DONNÉES PHARMACEUTIQUES", "7. TITULAIRE DE L'AUTORISATION DE MISE SUR LE MARCHE",
+    "8. NUMÉRO(S) D'AUTORISATION DE MISE SUR LE MARCHE", "9. DATE DE PREMIÈRE AUTORISATION",
+    "10. DATE DE MISE À JOUR DU TEXTE", "11. DOSIMÉTRIE", "12. INSTRUCTIONS POUR LA PRÉPARATION"
+]
+
+def resize_image(image, base_width=1000):
+    """ Réduit la taille de l’image pour accélérer l’OCR """
+    w_percent = base_width / float(image.size[0])
+    h_size = int(float(image.size[1]) * w_percent)
+    return image.resize((base_width, h_size), Image.Resampling.LANCZOS)
+
+def extract_text_by_sections(doc):
+    """Extrait et structure le texte du PDF en sections bien définies"""
+    extracted_medicines = []
+    current_medicine = None
+    current_section = None
+
+    for page in doc:
+        text_blocks = page.get_text("blocks")
+
+        for block in text_blocks:
+            line = block[4].strip()
+
+            if line.startswith("1.") and "DÉNOMINATION DU MÉDICAMENT" in line.upper():
+                if current_medicine:
+                    extracted_medicines.append(current_medicine)
+
+                current_medicine = {"sections": {}, "tables": [], "images": []}
+                current_section = line
+                current_medicine["sections"][current_section] = {"content": []}
+                print(f"Nouveau médicament détecté : {line}")
+
+            elif any(line.startswith(sec) for sec in TARGET_SECTIONS):
+                current_section = line
+                if current_medicine is None:
+                    continue
+                current_medicine["sections"][current_section] = {"content": []}
+                print(f"Section détectée : {line}")
+
+            elif current_section and current_medicine:
+                current_medicine["sections"][current_section]["content"].append({"text": line})
+
+    if current_medicine:
+        extracted_medicines.append(current_medicine)
+
+    return extracted_medicines
+
+def extract_text_from_images(pdf_bytes):
+    """Utilise OCR pour extraire du texte si le PDF est scanné"""
     try:
-        print(f"Telechargement de : {pdf_url}")
-        response = requests.get(pdf_url, timeout=10)
-        if response.status_code == 200:
-            with open(save_path, "wb") as file:
-                file.write(response.content)
-            print(f"PDF telecharge : {save_path}")
-            return True
-        else:
-            print(f"Echec ({response.status_code}) : {pdf_url}")
-            return False
-    except requests.exceptions.RequestException as e:
-        print(f"Erreur : {e}")
-        return False
+        images = convert_from_bytes(pdf_bytes.read())
+        text = "\n".join(pytesseract.image_to_string(resize_image(img), lang="fra", timeout=15) for img in images)
+        return text
+    except Exception as e:
+        print(f"Erreur OCR : {e}")
+        return ""
 
-def extract_text_tables(pdf_path):
-    """Extrait le texte et les tableaux dans l'ordre des pages"""
-    doc = fitz.open(pdf_path)
-    structured_content = []
-    extracted_tables = []
-
-    with pdfplumber.open(pdf_path) as pdf:
-        for page_num, (page_fitz, page_plumber) in enumerate(zip(doc, pdf.pages)):
-            elements = []
-
-            # Extraction du texte
-            text = page_fitz.get_text("text")
-            elements.append({"type": "text", "content": text.strip()})
-
-            # Extraction des tableaux
-            tables = page_plumber.extract_tables()
-            for table in tables:
-                clean_table = [[cell if cell else "" for cell in row] for row in table]
-                extracted_tables.append({
-                    "page": page_num + 1,
-                    "table": clean_table,
-                    "context": text.strip()[:200]
-                })
-                elements.append({"type": "table", "content": clean_table})
-
-            # Stocker dans la structure
-            structured_content.append({"page": page_num + 1, "elements": elements})
-
-    return structured_content, extracted_tables
-
-def extract_images(pdf_path):
-    """Extrait les images avec leur légende en réduisant leur taille"""
-    doc = fitz.open(pdf_path)
-    images_data = []
-
-    for page_num, page in enumerate(doc):
-        captions = page.get_text("text")
-        for img_index, img in enumerate(page.get_images(full=True)):
+def extract_images_from_pdf(doc):
+    """Extrait les images du PDF et les encode en base64"""
+    images = []
+    for page_index in range(len(doc)):
+        for img_index, img in enumerate(doc[page_index].get_images(full=True)):
             xref = img[0]
             base_image = doc.extract_image(xref)
             image_bytes = base_image["image"]
+            encoded_image = base64.b64encode(image_bytes).decode("utf-8")
+            images.append({"page": page_index + 1, "image": encoded_image})
+    return images
 
-            # Convertir en image PIL et compresser
-            image = Image.open(io.BytesIO(image_bytes))
-            image = image.convert("RGB")
-            image = image.resize((min(image.width, 800), min(image.height, 800)))  # Compression
+def extract_tables_from_pdf(doc):
+    """Extraction améliorée des tableaux à partir des blocs de texte tabulaires"""
+    tables = []
+    for page in doc:
+        text_blocks = page.get_text("blocks")
+        table = []
+        for block in text_blocks:
+            line = block[4].strip()
+            if "|" in line or "\t" in line or "  " in line:  # Détection des structures tabulaires
+                table.append(line.split("|") if "|" in line else line.split())
+        if table:
+            tables.append({"table": table})
+    return tables
 
-            # Sauvegarde en base64
-            buffered = io.BytesIO()
-            image.save(buffered, format="JPEG", optimize=True, quality=70)  # Compression JPEG 70%
-            image_base64 = base64.b64encode(buffered.getvalue()).decode("utf-8")
+# Vérifier si l'URL a déjà été traitée
+existing_urls = {doc["url"] for doc in collection.find({}, {"url": 1})}
 
-            # Recherche de la légende
-            caption = find_nearest_caption(captions, img_index)
+# Scraping des PDFs
+for url in urls:
+    if url in existing_urls:
+        print(f"URL déjà traitée, passage au suivant : {url}")
+        continue
 
-            print(f"Legende trouvee pour l'image {img_index} page {page_num}: {caption}")
+    print(f"Téléchargement et traitement du PDF : {url}")
 
-            images_data.append({
-                "page": page_num + 1,
-                "image_data": image_base64,
-                "caption": caption if caption else "Legende non disponible"
-            })
+    try:
+        response = requests.get(url, headers=HEADERS, timeout=10)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur lors du téléchargement : {e}")
+        continue
 
-    return images_data
+    # Chargement du PDF
+    pdf_bytes = BytesIO(response.content)
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-def find_nearest_caption(text, img_index):
-    """Detection amelioree des legendes autour de l'image"""
-    possible_captions = re.findall(r'((?:Figure|Schéma|Graphique|Tableau) \d+.*)', text)
-    if img_index < len(possible_captions):
-        return possible_captions[img_index]
-    return None
+    # Essayer d'extraire le texte
+    medicines = extract_text_by_sections(doc)
+    if not medicines:
+        print(f"Aucune donnée trouvée, tentative OCR sur {url}")
+        ocr_text = extract_text_from_images(pdf_bytes)
+        if ocr_text.strip():
+            medicines = [{"sections": {"OCR": {"content": [{"text": ocr_text}]}}}]
+        else:
+            print(f"OCR a échoué, PDF peut être illisible : {url}")
+            continue
 
-def process_pdf(index, row):
-    """Télécharge, extrait et stocke un PDF"""
-    pdf_url = row["liens"]
-    pdf_name = clean_filename(f"{row['nom_medicament']}.pdf")
-    pdf_path = os.path.join(PDF_DIR, pdf_name)
+    images = extract_images_from_pdf(doc)
+    tables = extract_tables_from_pdf(doc)
 
-    print(f"Traitement de : {pdf_name}")
+    # Insérer chaque médicament individuellement
+    for medicine in medicines:
+        medicine["url"] = url
+        medicine["images"] = images
+        medicine["tables"] = tables
 
-    if not os.path.exists(pdf_path):
-        if not download_pdf(pdf_url, pdf_path):
-            return
+        # Vérification insertion MongoDB
+        result = collection.insert_one(medicine)
+        if result.inserted_id:
+            print(f"Médicament inséré avec ID {result.inserted_id}")
+        else:
+            print("Échec de l'insertion dans MongoDB !")
 
-    structured_content, extracted_tables = extract_text_tables(pdf_path)
-    extracted_images = extract_images(pdf_path)
-
-    document = {
-        "file_name": pdf_name,
-        "title": row["nom_medicament"],
-        "content": structured_content,
-        "tables": extracted_tables,
-        "images": extracted_images
-    }
-
-    collection.insert_one(document)
-    print(f"Donnees inserees pour {pdf_name}")
-
-# Traitement des PDFs en parallele
-with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-    futures = [executor.submit(process_pdf, index, row) for index, row in df.iterrows()]
-    concurrent.futures.wait(futures)
-
-print("Extraction et stockage termines !")
+print("\n=== FIN DU SCRAPING PDF ===")
+print("Toutes les données ont été extraites et insérées dans MongoDB !")
