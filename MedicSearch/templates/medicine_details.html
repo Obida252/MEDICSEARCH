@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ medicine['name'] }} - MedicSearch</title>
+    <title>{{ medicine['title'] }} - MedicSearch</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/medicine_details.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
@@ -28,7 +28,7 @@
     <main>
         <section class="medicine-banner">
             <div class="container">
-                <h2>{{ medicine['name'] }}</h2>
+                <h2>{{ medicine['title'] }}</h2>
                 <div class="medicine-meta">
                     <span class="update-info">Mise à jour: {{ medicine['update_date'] }}</span>
                     <span class="source-url">Source: <a href="{{ medicine['url'] }}" target="_blank">Base de données publique des médicaments</a></span>
@@ -53,108 +53,94 @@
                             <h3>Résumé du médicament</h3>
                         </div>
                         <div class="card-body">
+                            {% if medicine.get('medicine_details') %}
+                                <!-- Informations de base -->
+                                <div class="summary-section">
+                                    <h4>Informations générales</h4>
+                                    {% if medicine['medicine_details'].get('forme') %}
+                                        <div class="plain-text"><strong>Forme pharmaceutique:</strong> {{ medicine['medicine_details']['forme'] }}</div>
+                                    {% endif %}
+                                    
+                                    {% if medicine['medicine_details'].get('dosages') and medicine['medicine_details']['dosages']|length > 0 %}
+                                        <div class="plain-text"><strong>Dosage(s):</strong> 
+                                            {{ medicine['medicine_details']['dosages']|join(', ') }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if medicine['medicine_details'].get('substances_actives') and medicine['medicine_details']['substances_actives']|length > 0 %}
+                                        <div class="plain-text"><strong>Substance(s) active(s):</strong>
+                                            {{ medicine['medicine_details']['substances_actives']|join(', ') }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    {% if medicine['medicine_details'].get('laboratoire') %}
+                                        <div class="plain-text"><strong>Laboratoire:</strong> {{ medicine['medicine_details']['laboratoire'] }}</div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                            
                             {% if medicine.get('sections') %}
-                                <!-- Dénomination -->
-                                {% set denomination_found = false %}
-                                {% for section_title, section in medicine['sections'].items() %}
-                                    {% if section_title.startswith('1.') and ('DÉNOMINATION' in section_title.upper() or 'DENOMINATION' in section_title.upper()) %}
-                                        {% set denomination_found = true %}
+                                <!-- Sections importantes -->
+                                {% for section in medicine['sections'] %}
+                                    {% if section['title'] == "1. DENOMINATION DU MEDICAMENT" %}
                                         <div class="summary-section">
                                             <h4>Dénomination</h4>
                                             {% for content_item in section['content'] %}
                                                 {% if content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
-                                                        <div class="plain-text"><strong>{{ content_item['text'] }}</strong></div>
-                                                    {% endif %}
+                                                    <div class="plain-text"><strong>{{ content_item['text'] }}</strong></div>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
                                     {% endif %}
-                                {% endfor %}
                                 
-                                <!-- Forme pharmaceutique -->
-                                {% set form_found = false %}
-                                {% for section_title, section in medicine['sections'].items() %}
-                                    {% if section_title.startswith('3.') and ('FORME' in section_title.upper()) %}
-                                        {% set form_found = true %}
-                                        <div class="summary-section">
-                                            <h4>Forme pharmaceutique</h4>
-                                            {% for content_item in section['content'] %}
-                                                {% if content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
-                                                        <div class="plain-text">{{ content_item['text'] }}</div>
-                                                    {% endif %}
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                {% endfor %}
-                                
-                                <!-- Composition -->
-                                {% set composition_found = false %}
-                                {% for section_title, section in medicine['sections'].items() %}
-                                    {% if section_title.startswith('2.') and ('COMPOSITION' in section_title.upper()) %}
-                                        {% set composition_found = true %}
+                                    {% if section['title'] == "2. COMPOSITION QUALITATIVE ET QUANTITATIVE" %}
                                         <div class="summary-section">
                                             <h4>Composition</h4>
                                             {% for content_item in section['content'] %}
                                                 {% if content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
-                                                        <div class="plain-text">{{ content_item['text'] }}</div>
-                                                    {% endif %}
+                                                    <div class="plain-text">{{ content_item['text'] }}</div>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
                                     {% endif %}
-                                {% endfor %}
-
-                                <!-- Indications thérapeutiques -->
-                                {% set indications_found = false %}
-                                {% for section_title, section in medicine['sections'].items() %}
-                                    {% if section_title.startswith('4.1') and ('INDICATIONS' in section_title.upper()) %}
-                                        {% set indications_found = true %}
+                                
+                                    {% if section['title'] == "3. FORME PHARMACEUTIQUE" %}
                                         <div class="summary-section">
-                                            <h4>Indications thérapeutiques</h4>
+                                            <h4>Forme pharmaceutique</h4>
                                             {% for content_item in section['content'] %}
                                                 {% if content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
-                                                        <div class="plain-text">{{ content_item['text'] }}</div>
-                                                    {% endif %}
+                                                    <div class="plain-text">{{ content_item['text'] }}</div>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
                                     {% endif %}
-                                {% endfor %}
-
-                                <!-- Contre-indications -->
-                                {% set contre_indications_found = false %}
-                                {% for section_title, section in medicine['sections'].items() %}
-                                    {% if section_title.startswith('4.3') and ('CONTRE-INDICATIONS' in section_title.upper() or 'CONTRE INDICATIONS' in section_title.upper()) %}
-                                        {% set contre_indications_found = true %}
-                                        <div class="summary-section">
-                                            <h4>Contre-indications</h4>
-                                            {% for content_item in section['content'] %}
-                                                {% if content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
+                                
+                                    {% for subsection in section.get('subsections', []) %}
+                                        {% if subsection['title'] == "4.1. Indications thérapeutiques" %}
+                                            <div class="summary-section">
+                                                <h4>Indications thérapeutiques</h4>
+                                                {% for content_item in subsection['content'] %}
+                                                    {% if content_item.get('text') %}
                                                         <div class="plain-text">{{ content_item['text'] }}</div>
                                                     {% endif %}
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    
+                                        {% if subsection['title'] == "4.3. Contre-indications" %}
+                                            <div class="summary-section">
+                                                <h4>Contre-indications</h4>
+                                                {% for content_item in subsection['content'] %}
+                                                    {% if content_item.get('text') %}
+                                                        <div class="plain-text">{{ content_item['text'] }}</div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    {% endfor %}
                                 {% endfor %}
-
-                                {% if not denomination_found and not composition_found and not indications_found and not contre_indications_found and not form_found %}
+                                
+                                {% if not medicine.get('medicine_details') and medicine['sections']|length == 0 %}
                                     <div class="no-data-message">
                                         <i class="fas fa-exclamation-circle"></i>
                                         <p>Aucune information résumée disponible pour ce médicament.</p>
@@ -173,37 +159,200 @@
                 <!-- Onglet sections détaillées -->
                 <div id="sections" class="tab-content">
                     {% if medicine.get('sections') %}
-                        {% for section_title, section in medicine['sections'].items() %}
+                        {% for section in medicine['sections'] %}
                             <div class="content-card">
                                 <div class="card-header">
-                                    <h3>{{ section_title }}</h3>
+                                    <h3>{{ section['title'] }}</h3>
                                 </div>
                                 
                                 <div class="card-body">
-                                    {% if section.get('content') %}
+                                    {% if section.get('content') and section['content']|length > 0 %}
                                         <div class="content-item">
                                             {% for content_item in section['content'] %}
                                                 {% if content_item.get('table') %}
-                                                    <table class="medicine-table">
-                                                        {% for row in content_item['table'] %}
-                                                            <tr>
-                                                                {% for cell in row %}
-                                                                    <td>{{ cell }}</td>
+                                                    <div class="table-container">
+                                                        {% if content_item.get('caption') %}
+                                                            <div class="table-caption">{{ content_item['caption'] }}</div>
+                                                        {% else %}
+                                                            <div class="table-caption">Tableau de données</div>
+                                                        {% endif %}
+                                                        <table class="medicine-table">
+                                                            {% if content_item.get('headers') %}
+                                                                <thead>
+                                                                    <tr>
+                                                                        {% for header in content_item['headers'] %}
+                                                                            <th>{{ header }}</th>
+                                                                        {% endfor %}
+                                                                    </tr>
+                                                                </thead>
+                                                            {% endif %}
+                                                            <tbody>
+                                                                {% for row in content_item['table'] %}
+                                                                    <tr>
+                                                                        {% for cell in row %}
+                                                                            {% if loop.index == 1 and not content_item.get('headers') %}
+                                                                                <th>{{ cell }}</th>
+                                                                            {% else %}
+                                                                                <td>{{ cell }}</td>
+                                                                            {% endif %}
+                                                                        {% endfor %}
+                                                                    </tr>
                                                                 {% endfor %}
-                                                            </tr>
-                                                        {% endfor %}
-                                                    </table>
-                                                    <br>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 {% elif content_item.get('text') %}
-                                                    {% if content_item.get('html_content') %}
-                                                        <div class="formatted-text">{{ content_item['html_content']|safe }}</div>
-                                                    {% else %}
-                                                        <p class="plain-text">{{ content_item['text'] }}</p>
-                                                    {% endif %}
+                                                    <div class="formatted-text 
+                                                        {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
+                                                        {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
+                                                        {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                            <strong><em>{{ content_item['text'] }}</em></strong>
+                                                        {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                            <strong><u>{{ content_item['text'] }}</u></strong>
+                                                        {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                            <em><u>{{ content_item['text'] }}</u></em>
+                                                        {% elif content_item['formatting']['bold'] %}
+                                                            <strong>{{ content_item['text'] }}</strong>
+                                                        {% elif content_item['formatting']['italic'] %}
+                                                            <em>{{ content_item['text'] }}</em>
+                                                        {% elif content_item['formatting']['underline'] %}
+                                                            <u>{{ content_item['text'] }}</u>
+                                                        {% else %}
+                                                            {{ content_item['text'] }}
+                                                        {% endif %}
+                                                    </div>
                                                 {% endif %}
                                             {% endfor %}
                                         </div>
-                                    {% else %}
+                                    {% endif %}
+                                    
+                                    {% if section.get('subsections') and section['subsections']|length > 0 %}
+                                        {% for subsection in section['subsections'] %}
+                                            <div class="subsection">
+                                                <h4>{{ subsection['title'] }}</h4>
+                                                {% for content_item in subsection['content'] %}
+                                                    {% if content_item.get('table') %}
+                                                        <div class="table-container">
+                                                            {% if content_item.get('caption') %}
+                                                                <div class="table-caption">{{ content_item['caption'] }}</div>
+                                                            {% else %}
+                                                                <div class="table-caption">Tableau de données</div>
+                                                            {% endif %}
+                                                            <table class="medicine-table">
+                                                                {% if content_item.get('headers') %}
+                                                                    <thead>
+                                                                        <tr>
+                                                                            {% for header in content_item['headers'] %}
+                                                                                <th>{{ header }}</th>
+                                                                            {% endfor %}
+                                                                        </tr>
+                                                                    </thead>
+                                                                {% endif %}
+                                                                <tbody>
+                                                                    {% for row in content_item['table'] %}
+                                                                        <tr>
+                                                                            {% for cell in row %}
+                                                                                {% if loop.index == 1 and not content_item.get('headers') %}
+                                                                                    <th>{{ cell }}</th>
+                                                                                {% else %}
+                                                                                    <td>{{ cell }}</td>
+                                                                                {% endif %}
+                                                                            {% endfor %}
+                                                                        </tr>
+                                                                    {% endfor %}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    {% elif content_item.get('text') %}
+                                                        <div class="formatted-text 
+                                                            {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
+                                                            {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
+                                                            {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                                <strong><em>{{ content_item['text'] }}</em></strong>
+                                                            {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                                <strong><u>{{ content_item['text'] }}</u></strong>
+                                                            {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                                <em><u>{{ content_item['text'] }}</u></em>
+                                                            {% elif content_item['formatting']['bold'] %}
+                                                                <strong>{{ content_item['text'] }}</strong>
+                                                            {% elif content_item['formatting']['italic'] %}
+                                                                <em>{{ content_item['text'] }}</em>
+                                                            {% elif content_item['formatting']['underline'] %}
+                                                                <u>{{ content_item['text'] }}</u>
+                                                            {% else %}
+                                                                {{ content_item['text'] }}
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                
+                                                {% if subsection.get('subsections') and subsection['subsections']|length > 0 %}
+                                                    {% for sub_subsection in subsection['subsections'] %}
+                                                        <div class="sub-subsection">
+                                                            <h5>{{ sub_subsection['title'] }}</h5>
+                                                            {% for content_item in sub_subsection['content'] %}
+                                                                {% if content_item.get('table') %}
+                                                                    <div class="table-container">
+                                                                        {% if content_item.get('caption') %}
+                                                                            <div class="table-caption">{{ content_item['caption'] }}</div>
+                                                                        {% else %}
+                                                                            <div class="table-caption">Tableau de données</div>
+                                                                        {% endif %}
+                                                                        <table class="medicine-table">
+                                                                            {% if content_item.get('headers') %}
+                                                                                <thead>
+                                                                                    <tr>
+                                                                                        {% for header in content_item['headers'] %}
+                                                                                            <th>{{ header }}</th>
+                                                                                        {% endfor %}
+                                                                                    </tr>
+                                                                                </thead>
+                                                                            {% endif %}
+                                                                            <tbody>
+                                                                                {% for row in content_item['table'] %}
+                                                                                    <tr>
+                                                                                        {% for cell in row %}
+                                                                                            {% if loop.index == 1 and not content_item.get('headers') %}
+                                                                                                <th>{{ cell }}</th>
+                                                                                            {% else %}
+                                                                                                <td>{{ cell }}</td>
+                                                                                            {% endif %}
+                                                                                        {% endfor %}
+                                                                                    </tr>
+                                                                                {% endfor %}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                {% elif content_item.get('text') %}
+                                                                    <div class="formatted-text 
+                                                                        {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
+                                                                        {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
+                                                                        {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                                            <strong><em>{{ content_item['text'] }}</em></strong>
+                                                                        {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                                            <strong><u>{{ content_item['text'] }}</u></strong>
+                                                                        {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                                            <em><u>{{ content_item['text'] }}</u></em>
+                                                                        {% elif content_item['formatting']['bold'] %}
+                                                                            <strong>{{ content_item['text'] }}</strong>
+                                                                        {% elif content_item['formatting']['italic'] %}
+                                                                            <em>{{ content_item['text'] }}</em>
+                                                                        {% elif content_item['formatting']['underline'] %}
+                                                                            <u>{{ content_item['text'] }}</u>
+                                                                        {% else %}
+                                                                            {{ content_item['text'] }}
+                                                                        {% endif %}
+                                                                    </div>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endfor %}
+                                                {% endif %}
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                    
+                                    {% if (not section.get('content') or section['content']|length == 0) and (not section.get('subsections') or section['subsections']|length == 0) %}
                                         <div class="no-data-message">
                                             <i class="fas fa-info-circle"></i>
                                             <p>Cette section ne contient pas de contenu.</p>
@@ -251,7 +400,7 @@
                             </div>
                             
                             <div class="data-info">
-                                <i class="fas fa-database"></i> Base de données: medicine_data64
+                                <i class="fas fa-database"></i> Base de données: medicine_data33.medicines
                             </div>
                             
                             <div class="id-info">

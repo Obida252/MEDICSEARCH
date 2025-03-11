@@ -7,6 +7,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/search.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .medicine-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .medicine-tag {
+            background-color: #f0f0f0;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            display: inline-flex;
+            align-items: center;
+        }
+        .tag-icon {
+            margin-right: 4px;
+            font-size: 0.7rem;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -129,13 +149,32 @@
                             <li class="medicine-item">
                                 <a href="/medicine/{{ medicine['_id'] }}" class="medicine-link">
                                     <div class="medicine-info">
-                                        <h3 class="medicine-title">{{ medicine['name'] }}</h3>
+                                        <h3 class="medicine-title">{{ medicine['title'] }}</h3>
                                         <div class="medicine-meta">
                                             <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: {{ medicine.get('update_date', 'Non disponible') }}</span>
                                             {% if medicine.get('search_match') %}
                                             <span class="medicine-match"><i class="fas fa-search medicine-icon"></i> Trouvé dans: {{ medicine.get('search_match') }}</span>
                                             {% endif %}
                                         </div>
+                                        {% if medicine.get('medicine_details') %}
+                                        <div class="medicine-tags">
+                                            {% if medicine['medicine_details'].get('forme') %}
+                                            <span class="medicine-tag"><i class="fas fa-prescription-bottle tag-icon"></i> {{ medicine['medicine_details']['forme'] }}</span>
+                                            {% endif %}
+                                            
+                                            {% if medicine['medicine_details'].get('laboratoire') %}
+                                            <span class="medicine-tag"><i class="fas fa-flask tag-icon"></i> {{ medicine['medicine_details']['laboratoire'] }}</span>
+                                            {% endif %}
+                                            
+                                            {% if medicine['medicine_details'].get('dosages') and medicine['medicine_details']['dosages']|length > 0 %}
+                                            <span class="medicine-tag"><i class="fas fa-balance-scale tag-icon"></i> {{ medicine['medicine_details']['dosages']|join(', ') }}</span>
+                                            {% endif %}
+                                            
+                                            {% if medicine['medicine_details'].get('substances_actives') and medicine['medicine_details']['substances_actives']|length > 0 %}
+                                            <span class="medicine-tag"><i class="fas fa-vial tag-icon"></i> {{ medicine['medicine_details']['substances_actives']|join(', ') }}</span>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
                                     </div>
                                     <span class="arrow-icon">&rarr;</span>
                                 </a>

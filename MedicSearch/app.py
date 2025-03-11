@@ -9,7 +9,7 @@ app = Flask(__name__)
 
 # Configuration de la connexion à MongoDB
 client = MongoClient("mongodb://localhost:27017/")
-db = client['medicine_data65']
+db = client['medicine_data43']
 collection = db['medicines']
 
 # Fonction pour convertir les objets BSON en JSON serializable
@@ -19,23 +19,18 @@ def bson_to_json(data):
 
 # Fonction pour extraire le nom du médicament
 def extract_medicine_name(medicine):
-    """Extrait le nom du médicament à partir des sections."""
+    """Extrait le nom du médicament."""
+    # Utiliser le titre s'il est disponible (dans la nouvelle structure)
+    if 'title' in medicine and medicine['title']:
+        return medicine['title']
+    
     # Chercher dans la section 1 (DÉNOMINATION DU MÉDICAMENT)
     if 'sections' in medicine and medicine['sections']:
-        # Vérifier avec le nom exact de la section tel qu'il apparaît dans la BD
-        section_name = None
-        for key in medicine['sections'].keys():
-            if key.startswith('1.') and 'DÉNOMINATION' in key.upper():
-                section_name = key
-                break
-            if key.startswith('1.') and 'DENOMINATION' in key.upper():
-                section_name = key
-                break
-        
-        if section_name and 'content' in medicine['sections'][section_name]:
-            for content in medicine['sections'][section_name]['content']:
-                if 'text' in content:
-                    return content['text']
+        for section in medicine['sections']:
+            if section['title'] == "1. DENOMINATION DU MEDICAMENT" and section.get('content'):
+                for content in section['content']:
+                    if 'text' in content:
+                        return content['text']
     
     # Si aucun nom n'est trouvé, utiliser l'ID comme nom par défaut
     return f"Médicament {medicine['_id']}"
@@ -87,11 +82,23 @@ def extract_filter_options():
         medicines = list(collection.find().limit(sample_size))
         
         for medicine in medicines:
-            # Extraction des substances actives à partir des sections 2.X (composition)
+            # Extraction des substances actives depuis medicine_details
+            if 'medicine_details' in medicine and 'substances_actives' in medicine['medicine_details']:
+                for substance in medicine['medicine_details']['substances_actives']:
+                    if substance and len(substance) > 2:  # Ignorer les valeurs trop courtes
+                        substances_actives.add(substance)
+            
+            # Extraction de la forme pharmaceutique depuis medicine_details
+            if 'medicine_details' in medicine and 'forme' in medicine['medicine_details']:
+                forme = medicine['medicine_details']['forme']
+                if forme and len(forme) > 2:  # Ignorer les valeurs trop courtes
+                    formes_pharma.add(forme)
+            
+            # Extraction à partir des sections
             if 'sections' in medicine:
-                for section_key, section in medicine['sections'].items():
-                    # Extraction des substances actives
-                    if (section_key.startswith('2.') or 'COMPOSITION' in section_key.upper()) and 'content' in section:
+                for section in medicine['sections']:
+                    # Extraction des substances actives (section 2)
+                    if section['title'] == "2. COMPOSITION QUALITATIVE ET QUANTITATIVE" and section.get('content'):
                         for content_item in section['content']:
                             if 'text' in content_item:
                                 text = content_item['text']
@@ -107,7 +114,7 @@ def extract_filter_options():
                                         substances_actives.add(clean_match.title())
                     
                     # Extraction des formes pharmaceutiques (section 3)
-                    if (section_key.startswith('3.') or 'FORME' in section_key.upper()) and 'content' in section:
+                    if section['title'] == "3. FORME PHARMACEUTIQUE" and section.get('content'):
                         for content_item in section['content']:
                             if 'text' in content_item:
                                 text = content_item['text'].lower()
@@ -123,24 +130,19 @@ def extract_filter_options():
                                         if "sécable" in text:
                                             formes_pharma.add(f"{terme.title()} Sécable")
                     
-                    # Extraction des voies d'administration (sections 4.2, 3, etc.)
-                    if ('4.2' in section_key or 'ADMINISTRATION' in section_key.upper() or 'VOIE' in section_key.upper()) and 'content' in section:
-                        for content_item in section['content']:
-                            if 'text' in content_item:
-                                text = content_item['text'].lower()
-                                for common_route in common_routes:
-                                    if common_route.lower() in text:
-                                        voies_admin.add(common_route)
+                    # Traitement des sous-sections de la section 4
+                    if section['title'] == "4. DONNEES CLINIQUES" and section.get('subsections'):
+                        for subsection in section['subsections']:
+                            # Extraction des voies d'administration (section 4.2)
+                            if subsection['title'] == "4.2. Posologie et mode d'administration" and subsection.get('content'):
+                                for content_item in subsection['content']:
+                                    if 'text' in content_item:
+                                        text = content_item['text'].lower()
+                                        for common_route in common_routes:
+                                            if common_route.lower() in text:
+                                                voies_admin.add(common_route)
                     
-                    # Extraction des classes ATC (section 5.1 généralement)
-                    if ('5.1' in section_key or 'ATC' in section_key.upper()) and 'content' in section:
-                        for content_item in section['content']:
-                            if 'text' in content_item:
-                                text = content_item['text']
-                                # Recherche des codes ATC
-                                for classe in atc_classes.keys():
-                                    if f"ATC {classe}" in text or f"code ATC : {classe}" in text or f"ATC : {classe}" in text:
-                                        classes_atc.add(classe)
+        print(f"Erreur lors de l'extraction des filtres: {e}")
     except Exception as e:
         print(f"Erreur lors de l'extraction des filtres: {e}")
         # Si une erreur survient, utiliser uniquement les valeurs prédéfinies
@@ -348,9 +350,10 @@ def medicine_details(id):
         
         # S'assurer que chaque élément de contenu a un champ html_content
         if 'sections' in medicine:
-            for section_key, section in medicine['sections'].items():
+            for section in medicine['sections']:
                 if 'content' in section:
                     for content_item in section['content']:
+                        # Traiter le texte normal
                         if 'text' in content_item and 'html_content' not in content_item:
                             # Créer un contenu HTML basique si manquant
                             text = content_item['text']
@@ -358,6 +361,43 @@ def medicine_details(id):
                             html_text = text.replace('\n', '<br>')
                             # Garder le texte simple en HTML mais avec les sauts de ligne
                             content_item['html_content'] = f"<p>{html_text}</p>"
+                        
+                        # S'assurer que les tableaux sont correctement formatés
+                        if 'table' in content_item and isinstance(content_item['table'], list):
+                            # Le tableau est déjà bien formaté, pas besoin de le modifier
+                            pass
+                
+                # Traiter également les sous-sections
+                if 'subsections' in section:
+                    for subsection in section['subsections']:
+                        if 'content' in subsection:
+                            for content_item in subsection['content']:
+                                # Traiter le texte normal
+                                if 'text' in content_item and 'html_content' not in content_item:
+                                    text = content_item['text']
+                                    html_text = text.replace('\n', '<br>')
+                                    content_item['html_content'] = f"<p>{html_text}</p>"
+                                
+                                # S'assurer que les tableaux sont correctement formatés
+                                if 'table' in content_item and isinstance(content_item['table'], list):
+                                    # Le tableau est déjà bien formaté, pas besoin de le modifier
+                                    pass
+                                    
+                        # Traiter également les sous-sous-sections si elles existent
+                        if 'subsections' in subsection:
+                            for sub_subsection in subsection['subsections']:
+                                if 'content' in sub_subsection:
+                                    for content_item in sub_subsection['content']:
+                                        # Traiter le texte normal
+                                        if 'text' in content_item and 'html_content' not in content_item:
+                                            text = content_item['text']
+                                            html_text = text.replace('\n', '<br>')
+                                            content_item['html_content'] = f"<p>{html_text}</p>"
+                                        
+                                        # S'assurer que les tableaux sont correctement formatés
+                                        if 'table' in content_item and isinstance(content_item['table'], list):
+                                            # Le tableau est déjà bien formaté, pas besoin de le modifier
+                                            pass
         
         # Convertir en JSON pour l'affichage brut
         medicine_json = json.dumps(bson_to_json(medicine), indent=2, ensure_ascii=False)

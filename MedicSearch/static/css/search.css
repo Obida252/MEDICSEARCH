@@ -314,6 +314,35 @@
     color: var(--primary);
 }
 
+/* Styles pour les tags de médicaments */
+.medicine-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.medicine-tag {
+    background-color: #f0f0f0;
+    color: #444;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.medicine-tag:hover {
+    background-color: #e0e0e0;
+}
+
+.tag-icon {
+    margin-right: 4px;
+    font-size: 0.7rem;
+    color: #666;
+}
+
 /* No Results */
 .no-results {
     text-align: center;

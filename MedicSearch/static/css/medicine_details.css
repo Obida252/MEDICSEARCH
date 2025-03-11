@@ -160,19 +160,48 @@
 .medicine-table {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: var(--spacing-md);
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.05);
 }
 
 .medicine-table th, 
 .medicine-table td {
-    border: 1px solid var(--medium-gray);
-    padding: var(--spacing-sm);
+    padding: 0.8rem;
     text-align: left;
+    border: 1px solid #e0e0e0;
 }
 
 .medicine-table th {
-    background-color: var(--light-gray);
+    background-color: #f5f5f5;
     font-weight: 600;
+    color: #333;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+}
+
+.medicine-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.medicine-table tr:hover {
+    background-color: #f0f0f0;
+}
+
+.table-caption {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+    color: #333;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+    border-left: 3px solid var(--primary);
+    padding-left: 0.5rem;
 }
 
 /* Debug Section */
@@ -352,6 +381,130 @@ pre {
     margin-bottom: var(--spacing-sm);
 }
 
+/* Améliorations pour les sections et sous-sections */
+.subsection {
+    margin: 1.5rem 0;
+    padding-left: 1rem;
+    border-left: 2px solid #e0e0e0;
+}
+
+.subsection h4 {
+    margin-bottom: 1rem;
+    color: #333;
+    font-size: 1.15rem;
+}
+
+.sub-subsection {
+    margin: 1.2rem 0;
+    padding-left: 1rem;
+    border-left: 1px solid #e0e0e0;
+}
+
+.sub-subsection h5 {
+    color: #444;
+    font-size: 1.05rem;
+    margin-bottom: 0.8rem;
+}
+
+/* Style pour le contenu des sections */
+.content-item {
+    margin-bottom: 1.5rem;
+}
+
+.plain-text {
+    line-height: 1.6;
+    margin-bottom: 1rem;
+}
+
+/* Enhanced Formatting Styles */
+.formatted-text {
+    margin-bottom: 1rem;
+    line-height: 1.6;
+    word-wrap: break-word;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.list-bullet {
+    position: relative;
+    padding-left: 1.2rem;
+}
+
+.list-bullet:before {
+    content: '•';
+    position: absolute;
+    left: 0;
+}
+
+.list-numbered {
+    position: relative;
+    padding-left: 1.5rem;
+    counter-increment: item;
+}
+
+.list-numbered:before {
+    content: counter(item) '.';
+    position: absolute;
+    left: 0;
+}
+
+/* Enhanced table styles */
+.table-container {
+    margin: 1.5rem 0;
+    overflow-x: auto;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.table-caption {
+    background-color: var(--light-gray);
+    padding: 0.8rem;
+    font-weight: 600;
+    color: var(--black);
+    border: 1px solid #e0e0e0;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.medicine-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.medicine-table th, 
+.medicine-table td {
+    padding: 0.8rem;
+    text-align: left;
+    border: 1px solid #e0e0e0;
+}
+
+.medicine-table thead th {
+    background-color: var(--primary-light);
+    color: var(--black);
+    font-weight: 600;
+}
+
+.medicine-table tbody th {
+    background-color: #f5f5f5;
+    font-weight: 600;
+}
+
+.medicine-table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.medicine-table tr:hover {
+    background-color: #f0f0f0;
+}
+
 /* Responsive Design */
 @media screen and (max-width: 768px) {
     .medicine-meta {
@@ -368,6 +521,20 @@ pre {
         text-align: center;
         font-size: 0.9rem;
         padding: var(--spacing-sm);
+    }
+
+    .table-container {
+        border-left: none;
+        padding-left: 0;
+    }
+    
+    .medicine-table {
+        font-size: 0.85rem;
+    }
+    
+    .medicine-table th,
+    .medicine-table td {
+        padding: 0.6rem;
     }
 }
 
