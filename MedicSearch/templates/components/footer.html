@@ -1,26 +1,27 @@
-<footer class="footer">
-    <div class="container footer-container">
-        <div class="footer-content">
-            <div class="footer-section footer-brand">
-                <h2 class="footer-logo">MedicSearch</h2>
-                <p>Base de données médicamenteuse pour les professionnels de santé et le public.</p>
-            </div>
-            <div class="footer-section footer-links">
-                <h3>Navigation</h3>
-                <ul>
-                    <li><a href="/">Accueil</a></li>
-                    <li><a href="/search">Recherche</a></li>
-                    <li><a href="/about">À propos</a></li>
-                </ul>
-            </div>
-            <div class="footer-section footer-contact">
-                <h3>Contact</h3>
-                <p>Un projet développé dans le cadre de la SAE5.01</p>
-                <p>Université Paris-Est Créteil (UPEC)</p>
-            </div>
+<footer>
+    <div class="footer-grid">
+        <div class="footer-col">
+            <h4>MEDICSEARCH</h4>
+            <p>Une référence pour l'information médicamenteuse.</p>
         </div>
-        <div class="footer-bottom">
-            <p>MedicSearch &copy; {{ now.year }} - Tous droits réservés</p>
+        <div class="footer-col">
+            <h4>PROJET</h4>
+            <ul>
+                <li><i class="fas fa-code"></i> SAE5.01</li>
+                <li><i class="fas fa-university"></i> IUT Créteil-Vitry</li>
+                <li><i class="fas fa-calendar-alt"></i> {{ now.year }}</li>
+            </ul>
         </div>
     </div>
+    <div class="copyright">
+        <p>&copy; {{ now.year }} MedicSearch. Projet académique.</p>
+    </div>
 </footer>
+
+<style>
+    .footer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 40px;
+    }
+</style>

@@ -29,21 +29,9 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-grid">
-            <div class="logo">
-                <h1>MEDICSEARCH</h1>
-                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="/">ACCUEIL</a></li>
-                    <li><a href="/search" class="active">RECHERCHE</a></li>
-                    <li><a href="/#about">À PROPOS</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+    {% with active_page='search' %}
+    {% include 'components/header.html' %}
+    {% endwith %}
 
     <main>
         <section class="search-banner">
@@ -56,8 +44,10 @@
         <section class="search-section">
             <div class="container">
                 <form class="search-form" method="GET" action="/search">
-                    <input type="text" name="search" placeholder="Nom du médicament ou ingrédient actif..." value="{{ search }}">
-                    <button type="submit">RECHERCHER</button>
+                    <div class="search-input-container">
+                        <input type="text" name="search" placeholder="Nom du médicament ou ingrédient actif..." value="{{ search }}">
+                        <button type="submit">RECHERCHER</button>
+                    </div>
                     
                     <div class="advanced-search-toggle">
                         <input type="checkbox" id="show-filters" class="toggle-checkbox" {% if advanced_search %}checked{% endif %} onclick="toggleFilters()">
@@ -88,34 +78,21 @@
                         
                         <div class="filters-row">
                             <div class="filter-group">
-                                <label for="voie_admin">VOIE D'ADMINISTRATION</label>
-                                <select name="voie_admin" id="voie_admin">
-                                    <option value="">Toutes les voies</option>
-                                    {% for voie in available_filters.voies_admin %}
-                                        <option value="{{ voie }}" {% if voie_admin == voie %}selected{% endif %}>{{ voie }}</option>
+                                <label for="laboratoire">LABORATOIRE</label>
+                                <select name="laboratoire" id="laboratoire">
+                                    <option value="">Tous les laboratoires</option>
+                                    {% for lab_name in available_filters.laboratoires %}
+                                        <option value="{{ lab_name }}" {% if laboratoire == lab_name %}selected{% endif %}>{{ lab_name }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="filter-group">
-                                <label for="classe_atc">CLASSE THÉRAPEUTIQUE</label>
-                                <select name="classe_atc" id="classe_atc">
-                                    <option value="">Toutes les classes</option>
-                                    {% for classe in available_filters.classes_atc %}
-                                        <option value="{{ classe.code }}" {% if classe_atc == classe.code %}selected{% endif %}>{{ classe.code }} - {{ classe.name }}</option>
+                                <label for="dosage">DOSAGE</label>
+                                <select name="dosage" id="dosage">
+                                    <option value="">Tous les dosages</option>
+                                    {% for dosage_value in available_filters.dosages %}
+                                        <option value="{{ dosage_value }}" {% if dosage == dosage_value %}selected{% endif %}>{{ dosage_value }}</option>
                                     {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div class="filters-row">
-                            <div class="filter-group">
-                                <label for="sort">TRIER PAR</label>
-                                <select name="sort" id="sort">
-                                    <option value="relevance" {% if sort == 'relevance' %}selected{% endif %}>Pertinence</option>
-                                    <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Nom (A-Z)</option>
-                                    <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Nom (Z-A)</option>
-                                    <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Date (récent)</option>
-                                    <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (ancien)</option>
                                 </select>
                             </div>
                         </div>
@@ -129,6 +106,9 @@
                     {% if search %}
                         <a href="/search" class="reset-btn">RÉINITIALISER LA RECHERCHE</a>
                     {% endif %}
+                    
+                    <!-- Ajout d'un champ caché pour conserver la pagination lors du tri -->
+                    <input type="hidden" name="page" value="{{ current_page }}">
                 </form>
             </div>
         </section>
@@ -138,49 +118,193 @@
                 <div class="results-container">
                     <h2>RÉSULTATS DE RECHERCHE</h2>
                     
+                    <!-- Calculer et afficher uniquement le nombre de résultats valides -->
                     <div class="stat-card">
-                        <span class="stat-number">{{ medicines|length }}</span>
+                        {% set valid_results_count = 0 %}
+                        {% for med in medicines %}
+                            {% if med['title'] != "Document sans titre" and not (med.get('medicine_details', {}).get('substances_actives', [])|length == 0 and med.get('medicine_details', {}).get('laboratoire') == "" and med.get('medicine_details', {}).get('dosages', [])|length == 0 and med.get('medicine_details', {}).get('forme') == "") %}
+                                {% set valid_results_count = valid_results_count + 1 %}
+                            {% endif %}
+                        {% endfor %}
+                        <span class="stat-number">{{ valid_results_count if valid_results_count > 0 else total_results }}</span>
                         <span class="stat-label">MÉDICAMENT(S) TROUVÉ(S)</span>
+                        <span class="stat-page">Page {{ current_page }} sur {{ total_pages }}</span>
+                        
+                        {# Ajouter une indication si des documents ont été filtrés 
+                        {% if valid_results_count < medicines|length %}
+                            <span class="stat-note">({{ medicines|length - valid_results_count }} documents incomplets filtrés)</span>
+                        {% endif %}
+                        #}
+                    </div>
+                    
+                    <!-- Ajout des contrôles de tri et nombre de résultats par page en haut -->
+                    <div class="results-controls">
+                        <form id="results-controls-form" method="GET" action="/search">
+                            <!-- Champs cachés pour conserver les filtres actuels -->
+                            <input type="hidden" name="search" value="{{ search }}">
+                            <input type="hidden" name="substance" value="{{ substance }}">
+                            <input type="hidden" name="forme" value="{{ forme }}">
+                            <input type="hidden" name="laboratoire" value="{{ laboratoire }}">
+                            <input type="hidden" name="dosage" value="{{ dosage }}">
+                            
+                            <div class="controls-wrapper">
+                                <div class="control-group">
+                                    <label for="sort">TRIER PAR</label>
+                                    <select name="sort" id="sort" onchange="document.getElementById('results-controls-form').submit()">
+                                        {% if search %}
+                                        <option value="relevance" {% if sort == 'relevance' %}selected{% endif %}>Pertinence</option>
+                                        {% else %}
+                                        <option value="relevance" disabled>Pertinence (recherche requise)</option>
+                                        {% endif %}
+                                        <option value="date_desc" {% if sort == 'date_desc' or (not search and sort == 'relevance') %}selected{% endif %}>Date (récent)</option>
+                                        <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Date (ancien)</option>
+                                        <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>Nom (A-Z)</option>
+                                        <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Nom (Z-A)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="control-group">
+                                    <label for="per_page">RÉSULTATS PAR PAGE</label>
+                                    <select name="per_page" id="per_page" onchange="document.getElementById('results-controls-form').submit()">
+                                        <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                                        <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                                        <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                                        <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                                        <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+                                        <option value="500" {% if per_page == 500 %}selected{% endif %}>500</option>
+                                        <option value="1000" {% if per_page == 1000 %}selected{% endif %}>1000</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </form>
                     </div>
 
                     {% if medicines|length > 0 %}
-                    <ul class="medicine-list">
+                    <div class="loading-container">
+                        <div class="loading-spinner" id="loading-spinner">
+                            <div class="spinner"></div>
+                            <p>Chargement des résultats...</p>
+                        </div>
+                    </div>
+                    
+                    <ul class="medicine-list" id="medicine-list" style="opacity: 0;">
                         {% for medicine in medicines %}
-                            <li class="medicine-item">
-                                <a href="/medicine/{{ medicine['_id'] }}" class="medicine-link">
-                                    <div class="medicine-info">
-                                        <h3 class="medicine-title">{{ medicine['title'] }}</h3>
-                                        <div class="medicine-meta">
-                                            <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: {{ medicine.get('update_date', 'Non disponible') }}</span>
-                                            {% if medicine.get('search_match') %}
-                                            <span class="medicine-match"><i class="fas fa-search medicine-icon"></i> Trouvé dans: {{ medicine.get('search_match') }}</span>
+                            <!-- Filtrer les documents sans titre ou avec des détails vides -->
+                            {% if medicine['title'] != "Document sans titre" and not (medicine.get('medicine_details', {}).get('substances_actives', [])|length == 0 and medicine.get('medicine_details', {}).get('laboratoire') == "" and medicine.get('medicine_details', {}).get('dosages', [])|length == 0 and medicine.get('medicine_details', {}).get('forme') == "") %}
+                                <li class="medicine-item" data-index="{{ loop.index0 }}">
+                                    <a href="/medicine/{{ medicine['_id'] }}" class="medicine-link">
+                                        <div class="medicine-info">
+                                            <h3 class="medicine-title">{{ medicine['title'] }}</h3>
+                                            <div class="medicine-meta">
+                                                <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: {{ medicine.get('update_date', 'Non disponible') }}</span>
+                                            </div>
+                                            
+                                            <!-- Affichage des correspondances de recherche -->
+                                            {% if search and medicine.get('search_matches') %}
+                                            <div class="search-matches">
+                                                <div class="search-matches-title">
+                                                    <i class="fas fa-search-location"></i> 
+                                                    {% if medicine.get('match_count', 0) > 1 %}
+                                                    {{ medicine.get('match_count', 0) }} occurrences trouvées dans:
+                                                    {% else %}
+                                                    Terme trouvé dans:
+                                                    {% endif %}
+                                                </div>
+                                                <ul class="matches-list">
+                                                    {% for match in medicine.get('search_matches', []) %}
+                                                    <li class="match-item">
+                                                        <span class="match-location">{{ match.location }}</span>
+                                                        <span class="match-excerpt">
+                                                            {% set terms = match.text|lower %}
+                                                            {% set searchterm = match.term|lower %}
+                                                            {% if searchterm in terms %}
+                                                                {% set parts = terms.split(searchterm) %}
+                                                                {% for part in parts %}
+                                                                    {{ part }}{% if not loop.last %}<span class="highlight-term">{{ searchterm }}</span>{% endif %}
+                                                                {% endfor %}
+                                                            {% else %}
+                                                                {{ match.text }}
+                                                            {% endif %}
+                                                        </span>
+                                                    </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            </div>
+                                            {% endif %}
+                                            
+                                            {% if medicine.get('medicine_details') %}
+                                            <div class="medicine-tags">
+                                                {% if medicine['medicine_details'].get('forme') %}
+                                                <span class="medicine-tag"><i class="fas fa-prescription-bottle tag-icon"></i> {{ medicine['medicine_details']['forme'] }}</span>
+                                                {% endif %}
+                                                
+                                                {% if medicine['medicine_details'].get('laboratoire') %}
+                                                <span class="medicine-tag"><i class="fas fa-flask tag-icon"></i> {{ medicine['medicine_details']['laboratoire'] }}</span>
+                                                {% endif %}
+                                                
+                                                {% if medicine['medicine_details'].get('dosages') and medicine['medicine_details']['dosages']|length > 0 %}
+                                                <span class="medicine-tag"><i class="fas fa-balance-scale tag-icon"></i> {{ medicine['medicine_details']['dosages']|join(', ') }}</span>
+                                                {% endif %}
+                                                
+                                                {% if medicine['medicine_details'].get('substances_actives') and medicine['medicine_details']['substances_actives']|length > 0 %}
+                                                <span class="medicine-tag"><i class="fas fa-vial tag-icon"></i> {{ medicine['medicine_details']['substances_actives']|join(', ') }}</span>
+                                                {% endif %}
+                                            </div>
                                             {% endif %}
                                         </div>
-                                        {% if medicine.get('medicine_details') %}
-                                        <div class="medicine-tags">
-                                            {% if medicine['medicine_details'].get('forme') %}
-                                            <span class="medicine-tag"><i class="fas fa-prescription-bottle tag-icon"></i> {{ medicine['medicine_details']['forme'] }}</span>
-                                            {% endif %}
-                                            
-                                            {% if medicine['medicine_details'].get('laboratoire') %}
-                                            <span class="medicine-tag"><i class="fas fa-flask tag-icon"></i> {{ medicine['medicine_details']['laboratoire'] }}</span>
-                                            {% endif %}
-                                            
-                                            {% if medicine['medicine_details'].get('dosages') and medicine['medicine_details']['dosages']|length > 0 %}
-                                            <span class="medicine-tag"><i class="fas fa-balance-scale tag-icon"></i> {{ medicine['medicine_details']['dosages']|join(', ') }}</span>
-                                            {% endif %}
-                                            
-                                            {% if medicine['medicine_details'].get('substances_actives') and medicine['medicine_details']['substances_actives']|length > 0 %}
-                                            <span class="medicine-tag"><i class="fas fa-vial tag-icon"></i> {{ medicine['medicine_details']['substances_actives']|join(', ') }}</span>
-                                            {% endif %}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    <span class="arrow-icon">&rarr;</span>
-                                </a>
-                            </li>
+                                        <span class="arrow-icon">&rarr;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
                         {% endfor %}
                     </ul>
+                    
+                    <!-- Ajout de la pagination -->
+                    <div class="pagination">
+                        {% if current_page > 1 %}
+                            <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=current_page-1) }}" class="pagination-link prev-page">
+                                <i class="fas fa-chevron-left"></i> Précédent
+                            </a>
+                        {% else %}
+                            <span class="pagination-link disabled">
+                                <i class="fas fa-chevron-left"></i> Précédent
+                            </span>
+                        {% endif %}
+                        <div class="page-numbers">
+                            {% set start_page = [current_page - 2, 1]|max %}
+                            {% set end_page = [start_page + 4, total_pages + 1]|min %}
+                            {% set start_page = [end_page - 5, 1]|max %}
+                            {% if start_page > 1 %}
+                                <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=1) }}" class="pagination-link">1</a>
+                                {% if start_page > 2 %}
+                                    <span class="pagination-ellipsis">...</span>
+                                {% endif %}
+                            {% endif %}
+                            {% for p in range(start_page, end_page) %}
+                                {% if p == current_page %}
+                                    <span class="pagination-link active">{{ p }}</span>
+                                {% else %}
+                                    <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=p) }}" class="pagination-link">{{ p }}</a>
+                                {% endif %}
+                            {% endfor %}
+                            {% if end_page <= total_pages %}
+                                {% if end_page < total_pages %}
+                                    <span class="pagination-ellipsis">...</span>
+                                {% endif %}
+                                <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=total_pages) }}" class="pagination-link">{{ total_pages }}</a>
+                            {% endif %}
+                        </div>
+                        {% if current_page < total_pages %}
+                            <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=current_page+1) }}" class="pagination-link next-page">
+                                Suivant <i class="fas fa-chevron-right"></i>
+                            </a>
+                        {% else %}
+                            <span class="pagination-link disabled">
+                                Suivant <i class="fas fa-chevron-right"></i>
+                            </span>
+                        {% endif %}
+                    </div>
+                    
                     {% else %}
                         <div class="no-results">
                             <div class="no-results-icon"><i class="fas fa-search"></i></div>
@@ -193,34 +317,9 @@
         </section>
     </main>
 
-    <footer>
-        <div class="footer-grid">
-            <div class="footer-col">
-                <h4>MEDICSEARCH</h4>
-                <p>Une référence pour l'information médicamenteuse.</p>
-                <p>Développé selon les principes du Swiss Design.</p>
-            </div>
-            <div class="footer-col">
-                <h4>NAVIGATION</h4>
-                <ul>
-                    <li><a href="/">Accueil</a></li>
-                    <li><a href="/search">Recherche</a></li>
-                    <li><a href="/#about">À propos</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h4>PROJET</h4>
-                <ul>
-                    <li><i class="fas fa-code"></i> SAE5.01</li>
-                    <li><i class="fas fa-university"></i> IUT Sénart-Fontainebleau</li>
-                    <li><i class="fas fa-calendar-alt"></i> 2023</li>
-                </ul>
-            </div>
-        </div>
-        <div class="copyright">
-            <p>&copy; 2023 MedicSearch. Projet académique.</p>
-        </div>
-    </footer>
+    {% with now=now|default({"year": 2023}) %}
+    {% include 'components/footer.html' %}
+    {% endwith %}
 
     <script>
         function toggleFilters() {
@@ -233,6 +332,78 @@
                 filtersContainer.classList.add('hidden');
             }
         }
+        
+        // Animation de chargement progressif des résultats
+        document.addEventListener('DOMContentLoaded', function() {
+            const medicineList = document.getElementById('medicine-list');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const medicineItems = document.querySelectorAll('.medicine-item');
+            const searchInput = document.querySelector('input[name="search"]');
+            const sortSelect = document.getElementById('sort');
+            
+            // Désactiver l'option de pertinence si pas de recherche
+            searchInput.addEventListener('input', function() {
+                const hasSearchTerm = this.value.trim().length > 0;
+                const relevanceOption = sortSelect.querySelector('option[value="relevance"]');
+                
+                if (hasSearchTerm) {
+                    relevanceOption.disabled = false;
+                    relevanceOption.textContent = "Pertinence";
+                } else {
+                    relevanceOption.disabled = true;
+                    relevanceOption.textContent = "Pertinence (recherche requise)";
+                    
+                    // Si l'option sélectionnée est "Pertinence" mais qu'il n'y a plus de termes de recherche
+                    if (sortSelect.value === 'relevance') {
+                        // Passer automatiquement à "Date (récent)"
+                        sortSelect.value = 'date_desc';
+                    }
+                }
+            });
+            
+            if (medicineItems.length > 0) {
+                // Afficher d'abord le spinner de chargement
+                loadingSpinner.style.display = 'flex';
+                
+                // Cacher initialement tous les éléments de la liste
+                medicineItems.forEach(item => {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateY(20px)';
+                });
+                
+                // Après un court délai, commencer à afficher les éléments un par un
+                setTimeout(() => {
+                    // Cacher le spinner de chargement
+                    loadingSpinner.style.opacity = '0';
+                    
+                    // Afficher la liste
+                    medicineList.style.opacity = '1';
+                    
+                    // Afficher chaque élément avec un délai progressif
+                    medicineItems.forEach((item, index) => {
+                        setTimeout(() => {
+                            item.style.opacity = '1';
+                            item.style.transform = 'translateY(0)';
+                        }, 100 + (index * 100)); // 100ms de délai entre chaque élément
+                    });
+                    
+                    // Supprimer complètement le spinner après la transition
+                    setTimeout(() => {
+                        loadingSpinner.style.display = 'none';
+                    }, 500);
+                    
+                }, 800); // Attendre 800ms avant de commencer à afficher les résultats
+            }
+        });
     </script>
+    
+    <style>
+        .stat-note {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
 </body>
 </html>

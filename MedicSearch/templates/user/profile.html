@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEDICSEARCH • Mon profil</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        .profile-container {
+            max-width: 800px;
+        }
+        
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-right: 20px;
+        }
+        
+        .profile-info h3 {
+            margin: 0 0 10px 0;
+        }
+        
+        .profile-email {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .profile-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .profile-section:last-child {
+            border-bottom: none;
+        }
+        
+        .profile-section h4 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .btn-logout {
+            background-color: #f5f5f5;
+            color: #333;
+            border: 1px solid #ddd;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        
+        .btn-logout:hover {
+            background-color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    {% with active_page='profile' %}
+    {% include 'components/header.html' %}
+    {% endwith %}
+
+    <main>
+        <section class="auth-section">
+            <div class="container">
+                <div class="auth-container profile-container">
+                    <h2>MON PROFIL</h2>
+                    
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }}">{{ message }}</div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="profile-info">
+                            <h3>Utilisateur Test</h3>
+                            <span class="profile-email">utilisateur@example.com</span>
+                        </div>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4><i class="fas fa-cog"></i> Paramètres du compte</h4>
+                        <p>Cette section sera implémentée ultérieurement.</p>
+                        <button class="btn-primary" disabled>Modifier mon profil</button>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4><i class="fas fa-history"></i> Historique des recherches</h4>
+                        <p>Vous n'avez pas encore effectué de recherches.</p>
+                    </div>
+                    
+                    <div class="profile-section">
+                        <h4><i class="fas fa-bookmark"></i> Médicaments favoris</h4>
+                        <p>Vous n'avez pas encore ajouté de médicaments à vos favoris.</p>
+                    </div>
+                    
+                    <div class="profile-section" style="text-align: center;">
+                        <a href="{{ url_for('users.logout') }}" class="btn-logout">
+                            <i class="fas fa-sign-out-alt"></i> Déconnexion
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    {% with now=now|default({"year": 2023}) %}
+    {% include 'components/footer.html' %}
+    {% endwith %}
+</body>
+</html>

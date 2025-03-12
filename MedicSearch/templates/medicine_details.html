@@ -9,21 +9,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
-    <header>
-        <div class="header-grid">
-            <div class="logo">
-                <h1>MEDICSEARCH</h1>
-                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
-            </div>
-            <nav>
-                <ul>
-                    <li><a href="/">ACCUEIL</a></li>
-                    <li><a href="/search">RECHERCHE</a></li>
-                    <li><a href="/#about">À PROPOS</a></li>
-                </ul>
-            </nav>
-        </div>
-    </header>
+    {% with active_page='medicine' %}
+    {% include 'components/header.html' %}
+    {% endwith %}
 
     <main>
         <section class="medicine-banner">
@@ -203,19 +191,22 @@
                                                     </div>
                                                 {% elif content_item.get('text') %}
                                                     <div class="formatted-text 
-                                                        {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
-                                                        {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
-                                                        {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                        {% if content_item.get('formatting', {}).get('alignment') != 'left' %}text-{{ content_item.get('formatting', {}).get('alignment') }}{% endif %}
+                                                        {% if content_item.get('formatting', {}).get('list_type') %}list-{{ content_item.get('formatting', {}).get('list_type') }}{% endif %}
+                                                        {% if content_item.get('formatting', {}).get('indent') %}indent-{{ content_item.get('formatting', {}).get('indent') }}{% endif %}">
+                                                        {% if content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('italic') and content_item.get('formatting', {}).get('underline') %}
+                                                            <strong><em><u>{{ content_item['text'] }}</u></em></strong>
+                                                        {% elif content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('italic') %}
                                                             <strong><em>{{ content_item['text'] }}</em></strong>
-                                                        {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                        {% elif content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('underline') %}
                                                             <strong><u>{{ content_item['text'] }}</u></strong>
-                                                        {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                        {% elif content_item.get('formatting', {}).get('italic') and content_item.get('formatting', {}).get('underline') %}
                                                             <em><u>{{ content_item['text'] }}</u></em>
-                                                        {% elif content_item['formatting']['bold'] %}
+                                                        {% elif content_item.get('formatting', {}).get('bold') %}
                                                             <strong>{{ content_item['text'] }}</strong>
-                                                        {% elif content_item['formatting']['italic'] %}
+                                                        {% elif content_item.get('formatting', {}).get('italic') %}
                                                             <em>{{ content_item['text'] }}</em>
-                                                        {% elif content_item['formatting']['underline'] %}
+                                                        {% elif content_item.get('formatting', {}).get('underline') %}
                                                             <u>{{ content_item['text'] }}</u>
                                                         {% else %}
                                                             {{ content_item['text'] }}
@@ -265,19 +256,22 @@
                                                         </div>
                                                     {% elif content_item.get('text') %}
                                                         <div class="formatted-text 
-                                                            {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
-                                                            {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
-                                                            {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                            {% if content_item.get('formatting', {}).get('alignment') != 'left' %}text-{{ content_item.get('formatting', {}).get('alignment') }}{% endif %}
+                                                            {% if content_item.get('formatting', {}).get('list_type') %}list-{{ content_item.get('formatting', {}).get('list_type') }}{% endif %}
+                                                            {% if content_item.get('formatting', {}).get('indent') %}indent-{{ content_item.get('formatting', {}).get('indent') }}{% endif %}">
+                                                            {% if content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('italic') and content_item.get('formatting', {}).get('underline') %}
+                                                                <strong><em><u>{{ content_item['text'] }}</u></em></strong>
+                                                            {% elif content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('italic') %}
                                                                 <strong><em>{{ content_item['text'] }}</em></strong>
-                                                            {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                            {% elif content_item.get('formatting', {}).get('bold') and content_item.get('formatting', {}).get('underline') %}
                                                                 <strong><u>{{ content_item['text'] }}</u></strong>
-                                                            {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                            {% elif content_item.get('formatting', {}).get('italic') and content_item.get('formatting', {}).get('underline') %}
                                                                 <em><u>{{ content_item['text'] }}</u></em>
-                                                            {% elif content_item['formatting']['bold'] %}
+                                                            {% elif content_item.get('formatting', {}).get('bold') %}
                                                                 <strong>{{ content_item['text'] }}</strong>
-                                                            {% elif content_item['formatting']['italic'] %}
+                                                            {% elif content_item.get('formatting', {}).get('italic') %}
                                                                 <em>{{ content_item['text'] }}</em>
-                                                            {% elif content_item['formatting']['underline'] %}
+                                                            {% elif content_item.get('formatting', {}).get('underline') %}
                                                                 <u>{{ content_item['text'] }}</u>
                                                             {% else %}
                                                                 {{ content_item['text'] }}
@@ -325,19 +319,22 @@
                                                                     </div>
                                                                 {% elif content_item.get('text') %}
                                                                     <div class="formatted-text 
-                                                                        {% if content_item['formatting']['alignment'] != 'left' %}text-{{ content_item['formatting']['alignment'] }}{% endif %}
-                                                                        {% if content_item['formatting']['list_type'] %}list-{{ content_item['formatting']['list_type'] }}{% endif %}">
-                                                                        {% if content_item['formatting']['bold'] and content_item['formatting']['italic'] %}
+                                                                        {% if content_item.get('formatting', {}).get('alignment') != 'left' %}text-{{ content_item.get('formatting', {}).get('alignment') }}{% endif %}
+                                                                        {% if content_item.get('formatting', {}).get('list_type') %}list-{{ content_item.get('formatting', {}).get('list_type') }}{% endif %}
+                                                                        {% if content_item.get('formatting', {}).get('indent') %}indent-{{ content_item.get('formatting', {}).get('indent') }}{% endif %}">
+                                                                        {% if content_item.get('formatting', {}).get('bold', False) and content_item.get('formatting', {}).get('italic', False) and content_item.get('formatting', {}).get('underline', False) %}
+                                                                            <strong><em><u>{{ content_item['text'] }}</u></em></strong>
+                                                                        {% elif content_item.get('formatting', {}).get('bold', False) and content_item.get('formatting', {}).get('italic', False) %}
                                                                             <strong><em>{{ content_item['text'] }}</em></strong>
-                                                                        {% elif content_item['formatting']['bold'] and content_item['formatting']['underline'] %}
+                                                                        {% elif content_item.get('formatting', {}).get('bold', False) and content_item.get('formatting', {}).get('underline', False) %}
                                                                             <strong><u>{{ content_item['text'] }}</u></strong>
-                                                                        {% elif content_item['formatting']['italic'] and content_item['formatting']['underline'] %}
+                                                                        {% elif content_item.get('formatting', {}).get('italic', False) and content_item.get('formatting', {}).get('underline', False) %}
                                                                             <em><u>{{ content_item['text'] }}</u></em>
-                                                                        {% elif content_item['formatting']['bold'] %}
+                                                                        {% elif content_item.get('formatting', {}).get('bold', False) %}
                                                                             <strong>{{ content_item['text'] }}</strong>
-                                                                        {% elif content_item['formatting']['italic'] %}
+                                                                        {% elif content_item.get('formatting', {}).get('italic', False) %}
                                                                             <em>{{ content_item['text'] }}</em>
-                                                                        {% elif content_item['formatting']['underline'] %}
+                                                                        {% elif content_item.get('formatting', {}).get('underline', False) %}
                                                                             <u>{{ content_item['text'] }}</u>
                                                                         {% else %}
                                                                             {{ content_item['text'] }}
@@ -413,34 +410,9 @@
         </section>
     </main>
 
-    <footer>
-        <div class="footer-grid">
-            <div class="footer-col">
-                <h4>MEDICSEARCH</h4>
-                <p>Une référence pour l'information médicamenteuse.</p>
-                <p>Développé selon les principes du Swiss Design.</p>
-            </div>
-            <div class="footer-col">
-                <h4>NAVIGATION</h4>
-                <ul>
-                    <li><a href="/">Accueil</a></li>
-                    <li><a href="/search">Recherche</a></li>
-                    <li><a href="/#about">À propos</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h4>PROJET</h4>
-                <ul>
-                    <li><i class="fas fa-code"></i> SAE5.01</li>
-                    <li><i class="fas fa-university"></i> IUT Sénart-Fontainebleau</li>
-                    <li><i class="fas fa-calendar-alt"></i> 2023</li>
-                </ul>
-            </div>
-        </div>
-        <div class="copyright">
-            <p>&copy; 2023 MedicSearch. Projet académique.</p>
-        </div>
-    </footer>
+    {% with now=now|default({"year": 2023}) %}
+    {% include 'components/footer.html' %}
+    {% endwith %}
     
     <script>
         function toggleDebug() {

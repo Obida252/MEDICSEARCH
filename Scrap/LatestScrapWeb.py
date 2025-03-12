@@ -235,15 +235,44 @@ def extract_laboratory(soup):
     """Extrait directement le laboratoire"""
     titulaire_section = soup.find('a', {'name': 'RcpTitulaireAmm'})
     if titulaire_section:
-        lab_element = titulaire_section.find_next('p', class_='AmmTitulaireNom')
-        if lab_element:
-            return lab_element.get_text(strip=True)
+        # Récupérer précisément le paragraphe qui contient le nom du laboratoire (généralement le premier ou deuxième paragraphe après l'ancre)
+        paragraphs = []
+        current_elem = titulaire_section.parent
+        # Obtenir les 3 paragraphes après la section de titre
+        for _ in range(5):  # Cherche dans les 5 éléments suivants maximum
+            current_elem = current_elem.find_next(['p', 'div'])
+            if not current_elem:
+                break
+            paragraphs.append(current_elem)
         
-        # Méthode alternative
-        for paragraph in titulaire_section.find_all_next('p', limit=5):
+        # Stratégie 1: Chercher spécifiquement un élément avec span class="gras"
+        for paragraph in paragraphs:
+            spans = paragraph.find_all('span', class_='gras')
+            for span in spans:
+                text = span.get_text(strip=True)
+                # Vérifier que ce n'est pas une adresse (ne contient pas de code postal)
+                if text and not re.match(r'^\d{5}', text) and not re.search(r'\d{5}\s', text):
+                    return text
+        
+        # Stratégie 2: Chercher le premier paragraphe qui contient du texte en gras
+        for paragraph in paragraphs:
+            # Vérifier si le paragraphe a la classe AmmCorpsTexteGras ou contient un span gras
+            if (paragraph.has_attr('class') and 'AmmCorpsTexteGras' in paragraph['class']) or paragraph.find('span', class_='gras'):
+                text = paragraph.get_text(strip=True)
+                # Vérifier que ce n'est pas un titre, une date ou une adresse
+                if not text.startswith(('7.', '8.', 'TITULAIRE', 'DATE')) and not re.match(r'^\d{5}', text):
+                    return text
+        
+        # Stratégie 3: Prendre le premier paragraphe non vide qui n'est pas un titre
+        for paragraph in paragraphs:
             text = paragraph.get_text(strip=True)
-            if text and not text.startswith(('Forme', '3.')):
-                return text
+            # Exclure les titres et les adresses
+            if (text and 
+                not text.startswith(('7.', '8.', 'TITULAIRE', 'DATE')) and 
+                not re.match(r'^\d{5}', text) and 
+                not re.search(r'\b\d{5}\b', text) and  # Pas de code postal
+                not any(word.lower() in text.lower() for word in ['rue', 'avenue', 'boulevard', 'cedex'])):  # Pas d'adresse
+                return text.replace('LABORATOIRES', 'LABORATOIRES ').strip()  # Fix for cases where LABORATOIRES is stuck to the name
     
     return ""
 
@@ -292,7 +321,8 @@ def extract_pharmaceutical_form(soup):
     """Extrait la forme pharmaceutique"""
     form_section = soup.find('a', {'name': 'RcpFormePharm'})
     if form_section:
-        form_paragraph = form_section.find_next('p', class_=lambda c: c and 'AmmCorpsTexte' in c)
+        # Recherche plus générique pour trouver le premier paragraphe après la section
+        form_paragraph = form_section.find_next('p')
         if form_paragraph:
             return form_paragraph.get_text(strip=True).rstrip('.')
     
