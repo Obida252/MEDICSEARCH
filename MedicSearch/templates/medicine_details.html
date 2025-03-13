@@ -30,6 +30,7 @@
                 <div class="nav-tabs">
                     <div class="nav-tab active" onclick="showTab('summary')">Résumé</div>
                     <div class="nav-tab" onclick="showTab('sections')">Sections détaillées</div>
+                    <div class="nav-tab" onclick="showTab('comments')">Commentaires</div>
                     <div class="nav-tab" onclick="showTab('raw-data')">Données techniques</div>
                 </div>
 
@@ -310,6 +311,131 @@
                     {% endif %}
                 </div>
                 
+                <!-- Onglet commentaires -->
+                <div id="comments" class="tab-content">
+                    <div class="content-card">
+                        <div class="card-header">
+                            <h3>Commentaires sur ce médicament</h3>
+                        </div>
+                        <div class="card-body">
+                            {% if g.user %}
+                                <!-- Formulaire pour ajouter un commentaire -->
+                                <div class="comment-form">
+                                    <h4>Ajouter un commentaire</h4>
+                                    <form action="{{ url_for('users.add_comment', medicine_id=medicine._id) }}" method="POST">
+                                        <div class="form-group">
+                                            <label for="rating">Note (optionnelle):</label>
+                                            <div class="rating">
+                                                <input type="radio" id="star5" name="rating" value="5" /><label for="star5"></label>
+                                                <input type="radio" id="star4" name="rating" value="4" /><label for="star4"></label>
+                                                <input type="radio" id="star3" name="rating" value="3" /><label for="star3"></label>
+                                                <input type="radio" id="star2" name="rating" value="2" /><label for="star2"></label>
+                                                <input type="radio" id="star1" name="rating" value="1" /><label for="star1"></label>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <textarea name="content" id="comment" rows="4" required placeholder="Partagez votre expérience ou vos connaissances concernant ce médicament..."></textarea>
+                                        </div>
+                                        <div class="form-actions">
+                                            <button type="submit" class="btn-primary">Publier</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            {% else %}
+                                <div class="login-prompt">
+                                    <i class="fas fa-lock"></i>
+                                    <p>Vous devez être <a href="{{ url_for('users.login', next=request.path) }}">connecté</a> pour ajouter un commentaire.</p>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Liste des commentaires -->
+                            <div class="comments-list">
+                                <h4>{{ comments|length }} commentaire{% if comments|length != 1 %}s{% endif %}</h4>
+                                
+                                {% if comments %}
+                                    {% for comment in comments %}
+                                        <div class="comment" id="comment-{{ comment._id }}">
+                                            <div class="comment-header">
+                                                <div class="comment-user">
+                                                    <i class="fas fa-user-circle"></i>
+                                                    <span>
+                                                        {% if 'user' in comment %}
+                                                            {{ comment.user.first_name }} {{ comment.user.last_name }}
+                                                        {% else %}
+                                                            Utilisateur anonyme
+                                                        {% endif %}
+                                                    </span>
+                                                </div>
+                                                <div class="comment-meta">
+                                                    {% if comment.rating %}
+                                                        <div class="comment-rating">
+                                                            {% for i in range(5) %}
+                                                                {% if i < comment.rating %}
+                                                                    <i class="fas fa-star"></i>
+                                                                {% else %}
+                                                                    <i class="far fa-star"></i>
+                                                                {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    <div class="comment-date" title="{{ comment.timestamp }}">
+                                                        {{ comment.timestamp.strftime('%d/%m/%Y') }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="comment-content">
+                                                {{ comment.content }}
+                                            </div>
+                                            
+                                            {% if g.user and (g.user._id|string == comment.user_id|string or g.user.role >= 4) %}
+                                                <div class="comment-actions">
+                                                    <button class="btn-edit-comment" onclick="showEditCommentForm('{{ comment._id }}')">
+                                                        <i class="fas fa-edit"></i> Modifier
+                                                    </button>
+                                                    <form class="delete-comment-form" action="{{ url_for('users.delete_comment', comment_id=comment._id) }}" method="POST" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer ce commentaire?')">
+                                                        <input type="hidden" name="medicine_id" value="{{ medicine._id }}">
+                                                        <button type="submit" class="btn-delete-comment">
+                                                            <i class="fas fa-trash"></i> Supprimer
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                                
+                                                <!-- Formulaire d'édition (caché par défaut) -->
+                                                <div id="edit-form-{{ comment._id }}" class="edit-comment-form" style="display: none;">
+                                                    <form action="{{ url_for('users.edit_comment', comment_id=comment._id) }}" method="POST">
+                                                        <input type="hidden" name="medicine_id" value="{{ medicine._id }}">
+                                                        <div class="form-group">
+                                                            <label for="edit-rating-{{ comment._id }}">Note:</label>
+                                                            <div class="rating edit-rating">
+                                                                {% for i in range(5, 0, -1) %}
+                                                                    <input type="radio" id="edit-star{{ i }}-{{ comment._id }}" name="rating" value="{{ i }}" {% if comment.rating == i %}checked{% endif %} />
+                                                                    <label for="edit-star{{ i }}-{{ comment._id }}"></label>
+                                                                {% endfor %}
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-group">
+                                                            <textarea name="content" rows="4" required>{{ comment.content }}</textarea>
+                                                        </div>
+                                                        <div class="form-actions">
+                                                            <button type="submit" class="btn-primary">Mettre à jour</button>
+                                                            <button type="button" class="btn-secondary" onclick="hideEditCommentForm('{{ comment._id }}')">Annuler</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="no-comments">
+                                        <i class="fas fa-comment-slash"></i>
+                                        <p>Aucun commentaire pour le moment. Soyez le premier à donner votre avis!</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- Onglet données techniques -->
                 <div id="raw-data" class="tab-content">
                     <div class="content-card">
@@ -383,6 +509,15 @@
                     tab.classList.add('active');
                 }
             });
+        }
+        
+        // Functions for comment editing
+        function showEditCommentForm(commentId) {
+            document.getElementById(`edit-form-${commentId}`).style.display = 'block';
+        }
+        
+        function hideEditCommentForm(commentId) {
+            document.getElementById(`edit-form-${commentId}`).style.display = 'none';
         }
     </script>
 </body>

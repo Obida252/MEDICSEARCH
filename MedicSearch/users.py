@@ -267,7 +267,7 @@ def add_comment(medicine_id):
     
     if not content:
         flash("Le contenu du commentaire est obligatoire.", "danger")
-        return redirect(url_for('main.medicine_details', id=medicine_id))
+        return redirect(url_for('medicine_details', id=medicine_id))  # Correction ici
         
     # Convertir rating en nombre si fourni
     rating_val = None
@@ -295,7 +295,7 @@ def add_comment(medicine_id):
     else:
         flash("Une erreur est survenue lors de l'ajout de votre commentaire.", "danger")
         
-    return redirect(url_for('main.medicine_details', id=medicine_id))
+    return redirect(url_for('medicine_details', id=medicine_id))  # Correction ici
 
 @users_bp.route('/comments/<comment_id>/edit', methods=['POST'])
 @login_required
@@ -305,9 +305,9 @@ def edit_comment(comment_id):
     rating = request.form.get('rating')
     medicine_id = request.form.get('medicine_id')
     
-    if not content or not medicine_id:  # Correction de "ou" à "or"
+    if not content or not medicine_id:
         flash("Informations manquantes.", "danger")
-        return redirect(url_for('main.medicine_details', id=medicine_id))
+        return redirect(url_for('medicine_details', id=medicine_id))  # Correction ici
         
     # Convertir rating en nombre si fourni
     update_data = {'content': content}
@@ -324,7 +324,7 @@ def edit_comment(comment_id):
     else:
         flash("Une erreur est survenue lors de la modification de votre commentaire.", "danger")
         
-    return redirect(url_for('main.medicine_details', id=medicine_id))
+    return redirect(url_for('medicine_details', id=medicine_id))  # Correction ici
 
 @users_bp.route('/comments/<comment_id>/delete', methods=['POST'])
 @login_required
@@ -345,7 +345,7 @@ def delete_comment(comment_id):
     else:
         flash("Une erreur est survenue lors de la suppression du commentaire.", "danger")
         
-    return redirect(url_for('main.medicine_details', id=medicine_id))
+    return redirect(url_for('medicine_details', id=medicine_id))  # Correction ici
 
 # Routes pour les favoris
 @users_bp.route('/medicines/<medicine_id>/favorite', methods=['POST'])

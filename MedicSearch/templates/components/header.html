@@ -8,7 +8,7 @@
         </div>
         <nav>
             <ul>
-                <li><a href="{{ url_for('search') }}" {% if active_page == 'search' %}class="active"{% endif %}>RECHERCHE</a></li>
+                <li><a href="{{ url_for('search') }}" {% if active_page == 'search' %}class="active"{% endif %}><i class="fas fa-search"></i> RECHERCHE</a></li>
                 {% if user %}
                     {% if user.role >= 4 %}
                     <!-- Menu admin visible uniquement pour les administrateurs -->
@@ -24,7 +24,7 @@
                     </li>
                     {% endif %}
                     <li class="dropdown">
-                        <a href="#" class="dropdown-toggle {% if active_page == 'profile' %}active{% endif %}">
+                        <a href="#" class="dropdown-toggle account-btn {% if active_page == 'profile' %}active{% endif %}">
                             <i class="fas fa-user"></i> MON COMPTE <i class="fas fa-caret-down"></i>
                         </a>
                         <div class="dropdown-menu">
@@ -39,12 +39,6 @@
                 {% endif %}
             </ul>
         </nav>
-        <div class="header-search">
-            <form action="{{ url_for('search') }}" method="get">
-                <input type="text" name="search" placeholder="Rechercher un médicament..." class="search-input">
-                <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
-            </form>
-        </div>
     </div>
 </header>
 <style>
@@ -63,6 +57,12 @@
     
     .login-btn:hover {
         background-color: #c62828;
+    }
+    
+    /* Style pour le bouton "MON COMPTE" en rouge */
+    .account-btn {
+        color: #e53935 !important;
+        font-weight: bold;
     }
     
     /* Styles pour le menu déroulant */

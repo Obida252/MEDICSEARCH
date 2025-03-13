@@ -606,8 +606,23 @@ def medicine_details(id):
                 user_role = int(user_role)
             
             # Récupérer les commentaires pour ce médicament visibles par l'utilisateur
-            if user_role is not None:
-                comments = Comment.get_for_medicine(str(medicine['_id']), user_role)
+            comments = Comment.get_for_medicine(str(medicine['_id']), user_role)
+            
+            # Ajouter les informations utilisateur à chaque commentaire
+            for comment in comments:
+                try:
+                    comment_user = User.get_by_id(comment['user_id'])
+                    if comment_user:
+                        comment['user'] = {
+                            'first_name': comment_user.get('first_name', 'Utilisateur'),
+                            'last_name': comment_user.get('last_name', '')
+                        }
+                except Exception as e:
+                    print(f"Erreur lors de la récupération des données utilisateur: {e}")
+        else:
+            # Même pour les utilisateurs non connectés, récupérer les commentaires publics
+            from models import Comment
+            comments = Comment.get_for_medicine(str(medicine['_id']))
         
         # S'assurer que chaque élément de contenu a un champ html_content
         if 'sections' in medicine:
