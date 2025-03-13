@@ -65,75 +65,12 @@
                                         <div class="plain-text"><strong>Laboratoire:</strong> {{ medicine['medicine_details']['laboratoire'] }}</div>
                                     {% endif %}
                                 </div>
-                            {% endif %}
-                            
-                            {% if medicine.get('sections') %}
-                                <!-- Sections importantes -->
-                                {% for section in medicine['sections'] %}
-                                    {% if section['title'] == "1. DENOMINATION DU MEDICAMENT" %}
-                                        <div class="summary-section">
-                                            <h4>Dénomination</h4>
-                                            {% for content_item in section['content'] %}
-                                                {% if content_item.get('text') %}
-                                                    <div class="plain-text"><strong>{{ content_item['text'] }}</strong></div>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
                                 
-                                    {% if section['title'] == "2. COMPOSITION QUALITATIVE ET QUANTITATIVE" %}
-                                        <div class="summary-section">
-                                            <h4>Composition</h4>
-                                            {% for content_item in section['content'] %}
-                                                {% if content_item.get('text') %}
-                                                    <div class="plain-text">{{ content_item['text'] }}</div>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                
-                                    {% if section['title'] == "3. FORME PHARMACEUTIQUE" %}
-                                        <div class="summary-section">
-                                            <h4>Forme pharmaceutique</h4>
-                                            {% for content_item in section['content'] %}
-                                                {% if content_item.get('text') %}
-                                                    <div class="plain-text">{{ content_item['text'] }}</div>
-                                                {% endif %}
-                                            {% endfor %}
-                                        </div>
-                                    {% endif %}
-                                
-                                    {% for subsection in section.get('subsections', []) %}
-                                        {% if subsection['title'] == "4.1. Indications thérapeutiques" %}
-                                            <div class="summary-section">
-                                                <h4>Indications thérapeutiques</h4>
-                                                {% for content_item in subsection['content'] %}
-                                                    {% if content_item.get('text') %}
-                                                        <div class="plain-text">{{ content_item['text'] }}</div>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    
-                                        {% if subsection['title'] == "4.3. Contre-indications" %}
-                                            <div class="summary-section">
-                                                <h4>Contre-indications</h4>
-                                                {% for content_item in subsection['content'] %}
-                                                    {% if content_item.get('text') %}
-                                                        <div class="plain-text">{{ content_item['text'] }}</div>
-                                                    {% endif %}
-                                                {% endfor %}
-                                            </div>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endfor %}
-                                
-                                {% if not medicine.get('medicine_details') and medicine['sections']|length == 0 %}
-                                    <div class="no-data-message">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        <p>Aucune information résumée disponible pour ce médicament.</p>
-                                    </div>
-                                {% endif %}
+                                <div class="summary-section" style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+                                    <i class="fas fa-robot" style="font-size: 2rem; color: #666; margin-bottom: 15px;"></i>
+                                    <h4>Résumé du médicament avec IA à venir</h4>
+                                    <p style="color: #666;">Cette fonctionnalité sera bientôt disponible.</p>
+                                </div>
                             {% else %}
                                 <div class="no-data-message">
                                     <i class="fas fa-exclamation-circle"></i>

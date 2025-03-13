@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, abort, redirect, url_for, stream_with_context, Response
+from flask import Flask, request, render_template, jsonify, abort, redirect, url_for, stream_with_context, Response, session, g
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import json
@@ -6,13 +6,23 @@ from bson import json_util
 import time
 import hashlib
 from functools import lru_cache
-from users import init_users
+import os
+from models import init_db
+import users  # Changé de "from users import init_users" à "import users"
+from config import get_config
 
 app = Flask(__name__)
+# Charger la configuration
+app_config = get_config()
+app.config.from_object(app_config)
 
 # Configuration de la connexion à MongoDB
-client = MongoClient("mongodb://localhost:27017/")
-db = client['medicsearch']
+client = MongoClient(app.config['MONGO_URI'])
+# Correction de l'erreur: utiliser try-except au lieu de l'opérateur OR
+try:
+    db = client.get_default_database()
+except:
+    db = client['medicsearch']
 collection = db['medicines']
 
 # Système de cache global pour les requêtes MongoDB
@@ -585,6 +595,24 @@ def medicine_details(id):
         # Ajouter le nom extrait comme attribut du médicament
         medicine['name'] = extract_medicine_name(medicine)
         
+        # Vérifier si le médicament est un favori pour l'utilisateur connecté
+        is_favorite = False
+        comments = []
+        user_role = None
+        
+        # Si l'utilisateur est connecté, récupérer ses interactions
+        if 'user_id' in request.cookies:
+            from models import Interaction, Comment
+            user_id = request.cookies.get('user_id')
+            is_favorite = Interaction.is_favorite(user_id, str(medicine['_id']))
+            user_role = request.cookies.get('role')
+            if user_role:
+                user_role = int(user_role)
+            
+            # Récupérer les commentaires pour ce médicament visibles par l'utilisateur
+            if user_role is not None:
+                comments = Comment.get_for_medicine(str(medicine['_id']), user_role)
+        
         # S'assurer que chaque élément de contenu a un champ html_content
         if 'sections' in medicine:
             for section in medicine['sections']:
@@ -638,7 +666,11 @@ def medicine_details(id):
         
         # Convertir en JSON pour l'affichage brut
         medicine_json = json.dumps(bson_to_json(medicine), indent=2, ensure_ascii=False)
-        return render_template('medicine_details.html', medicine=medicine, medicine_json=medicine_json)
+        return render_template('medicine_details.html', 
+                               medicine=medicine, 
+                               medicine_json=medicine_json,
+                               is_favorite=is_favorite,
+                               comments=comments)
     
     except Exception as e:
         print(f"Erreur dans medicine_details: {e}")
@@ -849,6 +881,26 @@ def search_results_api_stream():
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
+# Ajout de la page d'erreur 404
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('errors/404.html'), 404
+
+# Ajout de la page d'erreur 500
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template('errors/500.html'), 500
+
+# Fonction pour créer un context processor qui sera disponible dans tous les templates
+@app.context_processor
+def inject_user():
+    return dict(user=g.get('user', None))
+
 if __name__ == '__main__':
-    init_users(app)
-    app.run(debug=True)
+    # Initialiser la base de données
+    init_db(app)
+    
+    # Initialiser le système d'utilisateurs
+    users.init_users(app)  # Changé de "init_users(app)" à "users.init_users(app)"
+    
+    app.run(debug=app.config['DEBUG'])
