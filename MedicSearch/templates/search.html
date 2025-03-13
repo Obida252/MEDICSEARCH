@@ -109,6 +109,7 @@
                     
                     <!-- Ajout d'un champ caché pour conserver la pagination lors du tri -->
                     <input type="hidden" name="page" value="{{ current_page }}">
+                    <input type="hidden" name="per_page" value="{{ per_page }}">
                 </form>
             </div>
         </section>
@@ -118,26 +119,14 @@
                 <div class="results-container">
                     <h2>RÉSULTATS DE RECHERCHE</h2>
                     
-                    <!-- Calculer et afficher uniquement le nombre de résultats valides -->
-                    <div class="stat-card">
-                        {% set valid_results_count = 0 %}
-                        {% for med in medicines %}
-                            {% if med['title'] != "Document sans titre" and not (med.get('medicine_details', {}).get('substances_actives', [])|length == 0 and med.get('medicine_details', {}).get('laboratoire') == "" and med.get('medicine_details', {}).get('dosages', [])|length == 0 and med.get('medicine_details', {}).get('forme') == "") %}
-                                {% set valid_results_count = valid_results_count + 1 %}
-                            {% endif %}
-                        {% endfor %}
-                        <span class="stat-number">{{ valid_results_count if valid_results_count > 0 else total_results }}</span>
+                    <!-- Stat card - sera mise à jour dynamiquement -->
+                    <div class="stat-card" id="stat-card">
+                        <span class="stat-number" id="result-count">0</span>
                         <span class="stat-label">MÉDICAMENT(S) TROUVÉ(S)</span>
-                        <span class="stat-page">Page {{ current_page }} sur {{ total_pages }}</span>
-                        
-                        {# Ajouter une indication si des documents ont été filtrés 
-                        {% if valid_results_count < medicines|length %}
-                            <span class="stat-note">({{ medicines|length - valid_results_count }} documents incomplets filtrés)</span>
-                        {% endif %}
-                        #}
+                        <span class="stat-page" id="page-info">Chargement...</span>
                     </div>
                     
-                    <!-- Ajout des contrôles de tri et nombre de résultats par page en haut -->
+                    <!-- Contrôles de tri et nombre de résultats par page -->
                     <div class="results-controls">
                         <form id="results-controls-form" method="GET" action="/search">
                             <!-- Champs cachés pour conserver les filtres actuels -->
@@ -179,7 +168,6 @@
                         </form>
                     </div>
 
-                    {% if medicines|length > 0 %}
                     <div class="loading-container">
                         <div class="loading-spinner" id="loading-spinner">
                             <div class="spinner"></div>
@@ -187,131 +175,11 @@
                         </div>
                     </div>
                     
-                    <ul class="medicine-list" id="medicine-list" style="opacity: 0;">
-                        {% for medicine in medicines %}
-                            <!-- Filtrer les documents sans titre ou avec des détails vides -->
-                            {% if medicine['title'] != "Document sans titre" and not (medicine.get('medicine_details', {}).get('substances_actives', [])|length == 0 and medicine.get('medicine_details', {}).get('laboratoire') == "" and medicine.get('medicine_details', {}).get('dosages', [])|length == 0 and medicine.get('medicine_details', {}).get('forme') == "") %}
-                                <li class="medicine-item" data-index="{{ loop.index0 }}">
-                                    <a href="/medicine/{{ medicine['_id'] }}" class="medicine-link">
-                                        <div class="medicine-info">
-                                            <h3 class="medicine-title">{{ medicine['title'] }}</h3>
-                                            <div class="medicine-meta">
-                                                <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: {{ medicine.get('update_date', 'Non disponible') }}</span>
-                                            </div>
-                                            
-                                            <!-- Affichage des correspondances de recherche -->
-                                            {% if search and medicine.get('search_matches') %}
-                                            <div class="search-matches">
-                                                <div class="search-matches-title">
-                                                    <i class="fas fa-search-location"></i> 
-                                                    {% if medicine.get('match_count', 0) > 1 %}
-                                                    {{ medicine.get('match_count', 0) }} occurrences trouvées dans:
-                                                    {% else %}
-                                                    Terme trouvé dans:
-                                                    {% endif %}
-                                                </div>
-                                                <ul class="matches-list">
-                                                    {% for match in medicine.get('search_matches', []) %}
-                                                    <li class="match-item">
-                                                        <span class="match-location">{{ match.location }}</span>
-                                                        <span class="match-excerpt">
-                                                            {% set terms = match.text|lower %}
-                                                            {% set searchterm = match.term|lower %}
-                                                            {% if searchterm in terms %}
-                                                                {% set parts = terms.split(searchterm) %}
-                                                                {% for part in parts %}
-                                                                    {{ part }}{% if not loop.last %}<span class="highlight-term">{{ searchterm }}</span>{% endif %}
-                                                                {% endfor %}
-                                                            {% else %}
-                                                                {{ match.text }}
-                                                            {% endif %}
-                                                        </span>
-                                                    </li>
-                                                    {% endfor %}
-                                                </ul>
-                                            </div>
-                                            {% endif %}
-                                            
-                                            {% if medicine.get('medicine_details') %}
-                                            <div class="medicine-tags">
-                                                {% if medicine['medicine_details'].get('forme') %}
-                                                <span class="medicine-tag"><i class="fas fa-prescription-bottle tag-icon"></i> {{ medicine['medicine_details']['forme'] }}</span>
-                                                {% endif %}
-                                                
-                                                {% if medicine['medicine_details'].get('laboratoire') %}
-                                                <span class="medicine-tag"><i class="fas fa-flask tag-icon"></i> {{ medicine['medicine_details']['laboratoire'] }}</span>
-                                                {% endif %}
-                                                
-                                                {% if medicine['medicine_details'].get('dosages') and medicine['medicine_details']['dosages']|length > 0 %}
-                                                <span class="medicine-tag"><i class="fas fa-balance-scale tag-icon"></i> {{ medicine['medicine_details']['dosages']|join(', ') }}</span>
-                                                {% endif %}
-                                                
-                                                {% if medicine['medicine_details'].get('substances_actives') and medicine['medicine_details']['substances_actives']|length > 0 %}
-                                                <span class="medicine-tag"><i class="fas fa-vial tag-icon"></i> {{ medicine['medicine_details']['substances_actives']|join(', ') }}</span>
-                                                {% endif %}
-                                            </div>
-                                            {% endif %}
-                                        </div>
-                                        <span class="arrow-icon">&rarr;</span>
-                                    </a>
-                                </li>
-                            {% endif %}
-                        {% endfor %}
-                    </ul>
+                    <!-- Liste vide qui sera remplie dynamiquement -->
+                    <ul class="medicine-list" id="medicine-list" style="opacity: 0;"></ul>
                     
-                    <!-- Ajout de la pagination -->
-                    <div class="pagination">
-                        {% if current_page > 1 %}
-                            <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=current_page-1) }}" class="pagination-link prev-page">
-                                <i class="fas fa-chevron-left"></i> Précédent
-                            </a>
-                        {% else %}
-                            <span class="pagination-link disabled">
-                                <i class="fas fa-chevron-left"></i> Précédent
-                            </span>
-                        {% endif %}
-                        <div class="page-numbers">
-                            {% set start_page = [current_page - 2, 1]|max %}
-                            {% set end_page = [start_page + 4, total_pages + 1]|min %}
-                            {% set start_page = [end_page - 5, 1]|max %}
-                            {% if start_page > 1 %}
-                                <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=1) }}" class="pagination-link">1</a>
-                                {% if start_page > 2 %}
-                                    <span class="pagination-ellipsis">...</span>
-                                {% endif %}
-                            {% endif %}
-                            {% for p in range(start_page, end_page) %}
-                                {% if p == current_page %}
-                                    <span class="pagination-link active">{{ p }}</span>
-                                {% else %}
-                                    <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=p) }}" class="pagination-link">{{ p }}</a>
-                                {% endif %}
-                            {% endfor %}
-                            {% if end_page <= total_pages %}
-                                {% if end_page < total_pages %}
-                                    <span class="pagination-ellipsis">...</span>
-                                {% endif %}
-                                <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=total_pages) }}" class="pagination-link">{{ total_pages }}</a>
-                            {% endif %}
-                        </div>
-                        {% if current_page < total_pages %}
-                            <a href="{{ url_for('search', search=search, substance=substance, forme=forme, laboratoire=laboratoire, dosage=dosage, sort=sort, page=current_page+1) }}" class="pagination-link next-page">
-                                Suivant <i class="fas fa-chevron-right"></i>
-                            </a>
-                        {% else %}
-                            <span class="pagination-link disabled">
-                                Suivant <i class="fas fa-chevron-right"></i>
-                            </span>
-                        {% endif %}
-                    </div>
-                    
-                    {% else %}
-                        <div class="no-results">
-                            <div class="no-results-icon"><i class="fas fa-search"></i></div>
-                            <h3 class="no-results-title">AUCUN MÉDICAMENT TROUVÉ</h3>
-                            <p class="no-results-message">Essayez d'autres termes de recherche ou vérifiez l'orthographe.</p>
-                        </div>
-                    {% endif %}
+                    <!-- Pagination qui sera générée dynamiquement -->
+                    <div class="pagination" id="pagination"></div>
                 </div>
             </div>
         </section>
@@ -333,11 +201,7 @@
             }
         }
         
-        // Animation de chargement progressif des résultats
         document.addEventListener('DOMContentLoaded', function() {
-            const medicineList = document.getElementById('medicine-list');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            const medicineItems = document.querySelectorAll('.medicine-item');
             const searchInput = document.querySelector('input[name="search"]');
             const sortSelect = document.getElementById('sort');
             
@@ -353,48 +217,262 @@
                     relevanceOption.disabled = true;
                     relevanceOption.textContent = "Pertinence (recherche requise)";
                     
-                    // Si l'option sélectionnée est "Pertinence" mais qu'il n'y a plus de termes de recherche
                     if (sortSelect.value === 'relevance') {
-                        // Passer automatiquement à "Date (récent)"
                         sortSelect.value = 'date_desc';
                     }
                 }
             });
             
-            if (medicineItems.length > 0) {
-                // Afficher d'abord le spinner de chargement
-                loadingSpinner.style.display = 'flex';
+            // Charger les résultats dynamiquement
+            const urlParams = new URLSearchParams(window.location.search);
+            const searchQuery = urlParams.get('search') || '';
+            const page = parseInt(urlParams.get('page') || 1);
+            const perPage = parseInt(urlParams.get('per_page') || 10);
+            const substance = urlParams.get('substance') || '';
+            const forme = urlParams.get('forme') || '';
+            const laboratoire = urlParams.get('laboratoire') || '';
+            const dosage = urlParams.get('dosage') || '';
+            const sort = urlParams.get('sort') || 'date_desc';
+
+            loadResults(searchQuery, page, perPage, substance, forme, laboratoire, dosage, sort);
+        });
+
+        async function loadResults(searchQuery, page, perPage, substance, forme, laboratoire, dosage, sort) {
+            const medicineList = document.getElementById('medicine-list');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const pagination = document.getElementById('pagination');
+            const resultCount = document.getElementById('result-count');
+            const pageInfo = document.getElementById('page-info');
+
+            loadingSpinner.style.display = 'flex';
+            medicineList.innerHTML = ''; // Nettoyer la liste existante
+            medicineList.style.opacity = '0';
+
+            try {
+                // Construction de l'URL de l'API
+                const apiUrl = `/api/search-results-stream?search=${encodeURIComponent(searchQuery)}&page=${page}&per_page=${perPage}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}`;
+
+                // Utilisation de EventSource pour le streaming des résultats
+                const eventSource = new EventSource(apiUrl);
+
+                let resultsReceived = 0; // Compteur de résultats reçus
+                let totalResults = 0;
+
+                eventSource.onmessage = (event) => {
+                    if (event.data === 'end') {
+                        // Fin du flux, masquer le spinner et générer la pagination
+                        loadingSpinner.style.opacity = '0';
+                        setTimeout(() => {
+                            loadingSpinner.style.display = 'none';
+                            medicineList.style.opacity = '1';
+                        }, 300);
+                        
+                        // Mettre à jour le nombre total de résultats
+                        resultCount.textContent = totalResults;
+                        pageInfo.textContent = `Page ${page} sur ${Math.ceil(totalResults / perPage)}`;
+
+                        // Générer la pagination
+                        generatePagination(pagination, Math.ceil(totalResults / perPage), page, searchQuery, substance, forme, laboratoire, dosage, sort, perPage);
+
+                        eventSource.close();
+                        
+                        // Afficher le message "aucun résultat" si nécessaire
+                        if (totalResults === 0) {
+                            medicineList.innerHTML = `
+                                <div class="no-results">
+                                    <div class="no-results-icon"><i class="fas fa-search"></i></div>
+                                    <h3 class="no-results-title">AUCUN MÉDICAMENT TROUVÉ</h3>
+                                    <p class="no-results-message">Essayez d'autres termes de recherche ou vérifiez l'orthographe.</p>
+                                </div>
+                            `;
+                        }
+                        
+                        return;
+                    }
+
+                    try {
+                        const medicine = JSON.parse(event.data);
+                        resultsReceived++;
+
+                        // Créer un élément de liste pour le médicament
+                        const li = document.createElement('li');
+                        li.className = 'medicine-item';
+                        li.dataset.index = resultsReceived - 1;
+                        li.style.opacity = '0';
+                        li.style.transform = 'translateY(20px)';
+
+                        // Construction du HTML pour chaque médicament
+                        let html = `
+                            <a href="/medicine/${medicine.id}" class="medicine-link">
+                                <div class="medicine-info">
+                                    <h3 class="medicine-title">${medicine.title}</h3>
+                                    <div class="medicine-meta">
+                                        <span class="medicine-date"><i class="fas fa-calendar-alt medicine-icon"></i> Mise à jour: ${medicine.update_date || 'Non disponible'}</span>
+                                    </div>
+                        `;
+                        
+                        // Ajouter les correspondances de recherche si disponibles
+                        if (searchQuery && medicine.search_matches) {
+                            html += `
+                                <div class="search-matches">
+                                    <div class="search-matches-title">
+                                        <i class="fas fa-search-location"></i> 
+                                        ${medicine.match_count > 1 ? 
+                                            `${medicine.match_count} occurrences trouvées dans:` : 
+                                            'Terme trouvé dans:'}
+                                    </div>
+                                    <ul class="matches-list">
+                            `;
+                            
+                            medicine.search_matches.forEach(match => {
+                                let highlightedText = match.text;
+                                if (match.term && match.text.toLowerCase().includes(match.term.toLowerCase())) {
+                                    const regex = new RegExp(match.term, 'gi');
+                                    highlightedText = match.text.replace(regex, '<span class="highlight-term">$&</span>');
+                                }
+                                
+                                html += `
+                                    <li class="match-item">
+                                        <span class="match-location">${match.location}</span>
+                                        <span class="match-excerpt">${highlightedText}</span>
+                                    </li>
+                                `;
+                            });
+                            
+                            html += `
+                                    </ul>
+                                </div>
+                            `;
+                        }
+                        
+                        // Ajouter les tags si disponibles
+                        if (medicine.medicine_details) {
+                            html += '<div class="medicine-tags">';
+                            
+                            if (medicine.medicine_details.forme) {
+                                html += `<span class="medicine-tag"><i class="fas fa-prescription-bottle tag-icon"></i> ${medicine.medicine_details.forme}</span>`;
+                            }
+                            
+                            if (medicine.medicine_details.laboratoire) {
+                                html += `<span class="medicine-tag"><i class="fas fa-flask tag-icon"></i> ${medicine.medicine_details.laboratoire}</span>`;
+                            }
+                            
+                            if (medicine.medicine_details.dosages && medicine.medicine_details.dosages.length > 0) {
+                                html += `<span class="medicine-tag"><i class="fas fa-balance-scale tag-icon"></i> ${medicine.medicine_details.dosages.join(', ')}</span>`;
+                            }
+                            
+                            if (medicine.medicine_details.substances_actives && medicine.medicine_details.substances_actives.length > 0) {
+                                html += `<span class="medicine-tag"><i class="fas fa-vial tag-icon"></i> ${medicine.medicine_details.substances_actives.join(', ')}</span>`;
+                            }
+                            
+                            html += '</div>';
+                        }
+                        
+                        html += `
+                                </div>
+                                <span class="arrow-icon">&rarr;</span>
+                            </a>
+                        `;
+
+                        li.innerHTML = html;
+                        medicineList.appendChild(li);
+
+                        // Animation avec délai progressif
+                        li.style.opacity = '1';
+                        li.style.transform = 'translateY(0)';
+                    } catch (e) {
+                        console.error("Erreur lors du traitement du résultat:", e);
+                    }
+                };
                 
-                // Cacher initialement tous les éléments de la liste
-                medicineItems.forEach(item => {
-                    item.style.opacity = '0';
-                    item.style.transform = 'translateY(20px)';
+                eventSource.addEventListener('count', (event) => {
+                    const data = JSON.parse(event.data);
+                    resultCount.textContent = data.count;
                 });
                 
-                // Après un court délai, commencer à afficher les éléments un par un
-                setTimeout(() => {
-                    // Cacher le spinner de chargement
-                    loadingSpinner.style.opacity = '0';
-                    
-                    // Afficher la liste
+                eventSource.addEventListener('total', (event) => {
+                    const data = JSON.parse(event.data);
+                    totalResults = data.total;
+                });
+
+                eventSource.onerror = (error) => {
+                    console.error("Erreur EventSource:", error);
+                    loadingSpinner.style.display = 'none';
+                    medicineList.innerHTML = '<div class="error-message">Une erreur est survenue lors du chargement des résultats. Veuillez réessayer.</div>';
                     medicineList.style.opacity = '1';
-                    
-                    // Afficher chaque élément avec un délai progressif
-                    medicineItems.forEach((item, index) => {
-                        setTimeout(() => {
-                            item.style.opacity = '1';
-                            item.style.transform = 'translateY(0)';
-                        }, 100 + (index * 100)); // 100ms de délai entre chaque élément
-                    });
-                    
-                    // Supprimer complètement le spinner après la transition
-                    setTimeout(() => {
-                        loadingSpinner.style.display = 'none';
-                    }, 500);
-                    
-                }, 800); // Attendre 800ms avant de commencer à afficher les résultats
+                    eventSource.close();
+                };
+            } catch (error) {
+                console.error("Erreur:", error);
+                loadingSpinner.style.display = 'none';
+                medicineList.innerHTML = '<div class="error-message">Une erreur est survenue lors du chargement des résultats. Veuillez réessayer.</div>';
+                medicineList.style.opacity = '1';
             }
-        });
+        }
+
+        function generatePagination(paginationElement, totalPages, currentPage, search, substance, forme, laboratoire, dosage, sort, perPage) {
+            if (!totalPages || totalPages <= 0) {
+                paginationElement.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Bouton précédent
+            if (currentPage > 1) {
+                html += `<a href="/search?search=${encodeURIComponent(search)}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}&page=${currentPage-1}&per_page=${perPage}" class="pagination-link prev-page">
+                    <i class="fas fa-chevron-left"></i> Précédent
+                </a>`;
+            } else {
+                html += `<span class="pagination-link disabled">
+                    <i class="fas fa-chevron-left"></i> Précédent
+                </span>`;
+            }
+            
+            // Pages numérotées
+            html += '<div class="page-numbers">';
+            
+            let startPage = Math.max(currentPage - 2, 1);
+            let endPage = Math.min(startPage + 4, totalPages + 1);
+            startPage = Math.max(endPage - 5, 1);
+            
+            if (startPage > 1) {
+                html += `<a href="/search?search=${encodeURIComponent(search)}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}&page=1&per_page=${perPage}" class="pagination-link">1</a>`;
+                if (startPage > 2) {
+                    html += '<span class="pagination-ellipsis">...</span>';
+                }
+            }
+            
+            for (let p = startPage; p < endPage; p++) {
+                if (p === currentPage) {
+                    html += `<span class="pagination-link active">${p}</span>`;
+                } else {
+                    html += `<a href="/search?search=${encodeURIComponent(search)}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}&page=${p}&per_page=${perPage}" class="pagination-link">${p}</a>`;
+                }
+            }
+            
+            if (endPage <= totalPages) {
+                if (endPage < totalPages) {
+                    html += '<span class="pagination-ellipsis">...</span>';
+                }
+                html += `<a href="/search?search=${encodeURIComponent(search)}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}&page=${totalPages}&per_page=${perPage}" class="pagination-link">${totalPages}</a>`;
+            }
+            
+            html += '</div>';
+            
+            // Bouton suivant
+            if (currentPage < totalPages) {
+                html += `<a href="/search?search=${encodeURIComponent(search)}&substance=${encodeURIComponent(substance)}&forme=${encodeURIComponent(forme)}&laboratoire=${encodeURIComponent(laboratoire)}&dosage=${encodeURIComponent(dosage)}&sort=${sort}&page=${currentPage+1}&per_page=${perPage}" class="pagination-link next-page">
+                    Suivant <i class="fas fa-chevron-right"></i>
+                </a>`;
+            } else {
+                html += `<span class="pagination-link disabled">
+                    Suivant <i class="fas fa-chevron-right"></i>
+                </span>`;
+            }
+            
+            paginationElement.innerHTML = html;
+        }
     </script>
     
     <style>
@@ -403,6 +481,14 @@
             font-size: 0.75rem;
             color: #666;
             margin-top: 5px;
+        }
+        .error-message {
+            padding: 20px;
+            background-color: #fff0f0;
+            border-left: 4px solid #ff5252;
+            margin: 20px 0;
+            color: #800000;
+            text-align: center;
         }
     </style>
 </body>

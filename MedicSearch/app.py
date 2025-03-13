@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, jsonify, abort, redirect, url_for
+from flask import Flask, request, render_template, jsonify, abort, redirect, url_for, stream_with_context, Response
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 import json
@@ -12,89 +12,19 @@ app = Flask(__name__)
 
 # Configuration de la connexion à MongoDB
 client = MongoClient("mongodb://localhost:27017/")
-db = client['medicine_data48']
+db = client['medicsearch']
 collection = db['medicines']
 
 # Système de cache global pour les requêtes MongoDB
-QUERY_CACHE = {}
-CACHE_TIMEOUT = 600  # 10 minutes (en secondes)
-CACHE_STATS = {
-    'hits': 0,
-    'misses': 0,
-    'total': 0,
-    'last_cleanup': time.time()
-}
 
-def get_query_cache_key(query=None, sort_option=None, sort_direction=None, skip=0, limit=None, search_query=None):
-    """Génère une clé de cache unique pour une requête MongoDB"""
-    # Convertir la requête en chaîne JSON triée pour avoir une clé stable
-    query_str = json.dumps(query, sort_keys=True) if query else '{}'
-    
-    # Assembler tous les paramètres qui influencent le résultat
-    key_parts = [
-        query_str, 
-        str(sort_option), 
-        str(sort_direction),
-        str(skip),
-        str(limit)
-    ]
-    
-    # Ajouter le terme de recherche si présent
-    if search_query:
-        key_parts.append(search_query)
-    
-    # Créer un hash MD5 comme clé
-    cache_key = hashlib.md5('|'.join(key_parts).encode()).hexdigest()
-    return cache_key
 
-def get_cached_query_result(query=None, sort_option=None, sort_direction=None, skip=0, limit=None, search_query=None):
-    """Récupère un résultat en cache pour une requête MongoDB si disponible"""
-    CACHE_STATS['total'] += 1
-    
-    # Générer la clé de cache
-    cache_key = get_query_cache_key(query, sort_option, sort_direction, skip, limit, search_query)
-    
-    # Vérifier si la clé existe dans le cache et n'a pas expiré
-    if cache_key in QUERY_CACHE:
-        timestamp, results = QUERY_CACHE[cache_key]
-        if time.time() - timestamp < CACHE_TIMEOUT:
-            CACHE_STATS['hits'] += 1
-            print(f"CACHE HIT: Utilisation des résultats en cache (clé: {cache_key[:8]}...)")
-            return results
-    
-    # Si pas dans le cache ou expiré
-    CACHE_STATS['misses'] += 1
-    return None
 
-def store_query_result(results, query=None, sort_option=None, sort_direction=None, skip=0, limit=None, search_query=None):
-    """Stocke un résultat de requête dans le cache"""
-    cache_key = get_query_cache_key(query, sort_option, sort_direction, skip, limit, search_query)
-    QUERY_CACHE[cache_key] = (time.time(), results)
-    print(f"CACHE STORE: Résultats mis en cache (clé: {cache_key[:8]}...)")
-    
-    # Nettoyage périodique du cache (toutes les 100 requêtes)
-    if CACHE_STATS['total'] % 100 == 0:
-        cleanup_cache()
 
-def cleanup_cache():
-    """Nettoie le cache en supprimant les entrées expirées"""
-    current_time = time.time()
-    # Ne nettoyer que si le dernier nettoyage date d'au moins 1 minute
-    if current_time - CACHE_STATS.get('last_cleanup', 0) > 60:
-        expired_count = 0
-        expired_keys = []
-        
-        for k, (timestamp, _) in QUERY_CACHE.items():
-            if current_time - timestamp > CACHE_TIMEOUT:
-                expired_keys.append(k)
-                expired_count += 1
-        
-        # Supprimer les entrées expirées
-        for k in expired_keys:
-            del QUERY_CACHE[k]
-        
-        CACHE_STATS['last_cleanup'] = current_time
-        print(f"CACHE CLEANUP: {expired_count} entrées expirées supprimées. {len(QUERY_CACHE)} entrées restantes.")
+
+
+
+
+
 
 # Fonction pour convertir les objets BSON en JSON serializable
 def bson_to_json(data):
@@ -231,261 +161,22 @@ def extract_filter_options_from_results(medicines):
 
 @app.route('/search')
 def search():
-    """Route de recherche de médicaments avec filtres avancés"""
-    search_start_time = time.time()
-    
-    # Paramètres de recherche and de filtrage
+    # Récupérer les paramètres pour les passer au template
     search_query = request.args.get('search', '')
-    
-    # Pagination
     page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 10))  # Par défaut 10 résultats par page
-    # S'assurer que per_page est une valeur valide
-    valid_per_page_values = [10, 25, 50, 100, 200, 500, 1000]
-    if per_page not in valid_per_page_values:
-        per_page = 10
-    
-    # Filtres basés uniquement sur medicine_details
+    per_page = int(request.args.get('per_page', 10))
     substance = request.args.get('substance', '')
     forme = request.args.get('forme', '')
     laboratoire = request.args.get('laboratoire', '')
     dosage = request.args.get('dosage', '')
-    
-    # Par défaut, utiliser le tri par date décroissante si aucun tri spécifié
     sort_option = request.args.get('sort', 'date_desc')
-    
-    # Détecter si nous avons une recherche avancée
     advanced_search = substance or forme or laboratoire or dosage or sort_option != 'date_desc'
     
-    # Construction de la requête principale avec opérateur $and pour combiner tous les filtres
-    pipeline_filters = []
-    
-    # Recherche générale (dans toutes les sections)
-    if search_query:
-        # Utilisation de l'opérateur $text pour une recherche en texte intégral si disponible
-        if collection.index_information().get('text_index'):
-            search_condition = {'$text': {'$search': search_query}}
-        else:
-            # Sinon, recherche dans tous les champs possibles
-            search_condition = {
-                '$or': [
-                    {'title': {'$regex': search_query, '$options': 'i'}},
-                    {'medicine_details.substances_actives': {'$regex': search_query, '$options': 'i'}},
-                    {'medicine_details.laboratoire': {'$regex': search_query, '$options': 'i'}},
-                    {'medicine_details.forme': {'$regex': search_query, '$options': 'i'}},
-                    {'medicine_details.dosages': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.title': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.content.text': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.subsections.title': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.subsections.content.text': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.subsections.subsections.title': {'$regex': search_query, '$options': 'i'}},
-                    {'sections.subsections.subsections.content.text': {'$regex': search_query, '$options': 'i'}}
-                ]
-            }
-            
-            # Essayer d'ajouter la recherche par ID si la requête est un ObjectId valide
-            try:
-                oid = ObjectId(search_query)
-                search_condition['$or'].append({'_id': oid})
-            except:
-                pass
-                
-        pipeline_filters.append(search_condition)
-    
-    # Filtres basés uniquement sur medicine_details
-    if substance:
-        pipeline_filters.append({'medicine_details.substances_actives': {'$regex': substance, '$options': 'i'}})
-    
-    if forme:
-        pipeline_filters.append({'medicine_details.forme': {'$regex': forme, '$options': 'i'}})
-    
-    if laboratoire:
-        pipeline_filters.append({'medicine_details.laboratoire': {'$regex': laboratoire, '$options': 'i'}})
-    
-    if dosage:
-        pipeline_filters.append({'medicine_details.dosages': {'$regex': dosage, '$options': 'i'}})
-    
-    # Construire la requête finale
-    query = {}
-    if pipeline_filters:
-        query['$and'] = pipeline_filters
-    
-    # Calculer le nombre total de résultats
-    # Cette opération peut également être mise en cache
-    total_results_cache_key = get_query_cache_key(query, "count", None)
-    cached_total = get_cached_query_result(query, "count")
-    if cached_total is not None:
-        total_results = cached_total
-    else:
-        total_results = collection.count_documents(query) if query else collection.count_documents({})
-        store_query_result(total_results, query, "count")
-    
-    # Calculer le nombre total de pages
-    total_pages = (total_results + per_page - 1) // per_page  # Arrondir au supérieur
-    
-    # Appliquer la pagination
-    skip_count = (page - 1) * per_page
-    
-    # Déterminer l'ordre du tri
-    sort_direction = -1  # Par défaut, du plus récent au plus ancien
-    sort_field = None
-    sort_by_date = False  # Indicateur pour savoir si on trie par date
-    
-    if sort_option == 'name_asc':
-        sort_field = 'title'
-        sort_direction = 1
-    elif sort_option == 'name_desc':
-        sort_field = 'title'
-        sort_direction = -1
-    elif sort_option == 'date_asc':
-        sort_by_date = True
-        sort_direction = 1
-    elif sort_option == 'date_desc':
-        sort_by_date = True
-        sort_direction = -1
-    
-    # Exécution de la requête paginée avec cache
-    medicines = None
-    all_medicines = None
-    
-    if query:
-        if sort_option == 'relevance' and search_query:
-            # Vérifier le cache pour les résultats triés par pertinence
-            cached_results = get_cached_query_result(query, sort_option, sort_direction, skip=0, limit=None, search_query=search_query)
-            
-            if cached_results:
-                # Utiliser les résultats depuis le cache
-                all_medicines = cached_results
-                medicines = all_medicines[skip_count:skip_count + per_page]
-            else:
-                print(f"CACHE MISS: Exécution du tri par pertinence pour '{search_query}'")
-                # Récupérer tous les résultats pour le tri
-                query_start = time.time()
-                all_medicines = list(collection.find(query))
-                print(f"Requête MongoDB complète: {time.time() - query_start:.3f}s - {len(all_medicines)} résultats")
-                
-                # Calculer des scores de pertinence
-                scoring_start = time.time()
-                for medicine in all_medicines:
-                    medicine['relevance_score'] = calculate_relevance_score(medicine, search_query)
-                print(f"Calcul des scores: {time.time() - scoring_start:.3f}s")
-                
-                # Trier par score
-                sort_start = time.time()
-                all_medicines = sorted(all_medicines, key=lambda x: (x.get('relevance_score', 0), x.get('match_count', 0)), reverse=True)
-                print(f"Tri par pertinence: {time.time() - sort_start:.3f}s")
-                
-                # Mettre en cache les résultats triés
-                store_query_result(all_medicines, query, sort_option, sort_direction, skip=0, limit=None, search_query=search_query)
-                
-                # Obtenir la page actuelle
-                medicines = all_medicines[skip_count:skip_count + per_page]
-        
-        elif sort_by_date:
-            # Vérifier le cache pour les résultats triés par date
-            cached_results = get_cached_query_result(query, sort_option, sort_direction)
-            
-            if cached_results:
-                # Utiliser les résultats depuis le cache
-                all_medicines = cached_results
-                medicines = all_medicines[skip_count:skip_count + per_page]
-            else:
-                print(f"CACHE MISS: Exécution du tri par date ({sort_option})")
-                # Récupérer tous les résultats pour le tri
-                query_start = time.time()
-                all_medicines = list(collection.find(query))
-                print(f"Requête MongoDB complète: {time.time() - query_start:.3f}s - {len(all_medicines)} résultats")
-                
-                # Tri manuel par date
-                all_medicines = sort_medicines_by_date(all_medicines, sort_direction)
-                
-                # Mettre en cache les résultats triés
-                store_query_result(all_medicines, query, sort_option, sort_direction)
-                
-                # Obtenir la page actuelle
-                medicines = all_medicines[skip_count:skip_count + per_page]
-        else:
-            # Pour les autres types de tri, utiliser MongoDB
-            # Vérifier d'abord le cache
-            cached_results = get_cached_query_result(query, sort_option, sort_direction, skip=skip_count, limit=per_page)
-            
-            if cached_results:
-                medicines = cached_results
-            else:
-                print(f"CACHE MISS: Tri standard par MongoDB ({sort_option})")
-                medicines = list(collection.find(query).sort(sort_field, sort_direction).skip(skip_count).limit(per_page))
-                
-                # Mettre en cache
-                store_query_result(medicines, query, sort_option, sort_direction, skip=skip_count, limit=per_page)
-    else:
-        # Si aucun filtre
-        if sort_by_date:
-            # Vérifier le cache
-            cached_results = get_cached_query_result({}, sort_option, sort_direction)
-            
-            if cached_results:
-                all_medicines = cached_results
-                medicines = all_medicines[skip_count:skip_count + per_page]
-            else:
-                print(f"CACHE MISS: Récupération et tri de tous les documents par date")
-                # Récupérer tous les documents
-                query_start = time.time()
-                all_medicines = list(collection.find())
-                print(f"Récupération de tous les documents: {time.time() - query_start:.3f}s - {len(all_medicines)} résultats")
-                
-                # Tri manuel par date
-                all_medicines = sort_medicines_by_date(all_medicines, sort_direction)
-                
-                # Mettre en cache
-                store_query_result(all_medicines, {}, sort_option, sort_direction)
-                
-                # Obtenir la page actuelle
-                medicines = all_medicines[skip_count:skip_count + per_page]
-        else:
-            # Tri standard par MongoDB
-            cached_results = get_cached_query_result({}, sort_option, sort_direction, skip=skip_count, limit=per_page)
-            
-            if cached_results:
-                medicines = cached_results
-            else:
-                sort_field = sort_field or '_id'
-                medicines = list(collection.find().sort(sort_field, sort_direction).skip(skip_count).limit(per_page))
-                
-                # Mettre en cache
-                store_query_result(medicines, {}, sort_option, sort_direction, skip=skip_count, limit=per_page)
-    
-    # Pour chaque médicament affiché, ajouter les détails de recherche si nécessaire
-    if search_query:
-        for medicine in medicines:
-            if 'search_matches' not in medicine:
-                medicine['search_matches'] = find_search_term_locations(medicine, search_query)
-                # Calculer le score de pertinence s'il n'est pas déjà calculé
-                if 'relevance_score' not in medicine:
-                    calculate_relevance_score(medicine, search_query)
-    
-    # Récupérer les options de filtre
-    filter_cache_key = get_query_cache_key(query, "filters")
-    cached_filters = get_cached_query_result(query, "filters")
-    
-    if cached_filters:
-        available_filters = cached_filters
-    else:
-        # Limiter à 1000 pour la performance
-        matching_meds_for_filters = all_medicines if all_medicines else list(collection.find(query).limit(1000))
-        available_filters = extract_filter_options_from_results(matching_meds_for_filters)
-        store_query_result(available_filters, query, "filters")
-    
-    # Ajouter le nom des médicaments
-    for medicine in medicines:
-        medicine['name'] = extract_medicine_name(medicine)
-    
-    # Calculer le temps d'exécution total
-    total_duration = time.time() - search_start_time
-    print(f"TEMPS TOTAL DE RECHERCHE: {total_duration:.3f}s")
-    print(f"STATS CACHE: {CACHE_STATS['hits']} hits, {CACHE_STATS['misses']} misses ({len(QUERY_CACHE)} entrées en cache)")
-    
+    # Get filter options
+    available_filters = extract_filter_options()
+
+    # Rendre le template sans les résultats
     return render_template('search.html',
-                          medicines=medicines, 
                           search=search_query,
                           substance=substance,
                           forme=forme,
@@ -493,12 +184,9 @@ def search():
                           dosage=dosage,
                           sort=sort_option,
                           advanced_search=advanced_search,
-                          available_filters=available_filters,
                           current_page=page,
-                          total_pages=total_pages,
-                          total_results=total_results,
                           per_page=per_page,
-                          execution_time=total_duration)
+                          available_filters=available_filters)
 
 @lru_cache(maxsize=1024)
 def convert_french_date_cached(date_str):
@@ -979,54 +667,187 @@ def debug_info():
     for doc in collection.find().limit(100):
         fields.update(doc.keys())
     
+    # Get filter options
+    available_filters = extract_filter_options()
+    
     return render_template('debug.html', 
                           stats=collection_stats,
                           sample=sample_json,
-                          fields=sorted(list(fields)))
+                          fields=sorted(list(fields)),
+                          available_filters=available_filters)
 
-@app.route('/cache-stats')
-def cache_stats():
-    """Affiche les statistiques du cache et permet de le vider"""
-    hit_rate = 0
-    if CACHE_STATS['total'] > 0:
-        hit_rate = (CACHE_STATS['hits'] / CACHE_STATS['total']) * 100
+@app.route('/api/search-results')
+def search_results_api():
+    search_query = request.args.get('search', '')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    substance = request.args.get('substance', '')
+    forme = request.args.get('forme', '')
+    laboratoire = request.args.get('laboratoire', '')
+    dosage = request.args.get('dosage', '')
+    sort_option = request.args.get('sort', 'date_desc')
+
+    query = {}
+    pipeline_filters = []
+
+    # Construction de la requête de recherche
+    if search_query:
+        search_regex = {'$regex': search_query, '$options': 'i'}
+        pipeline_filters.append({'$or': [
+            {'title': search_regex},
+            {'medicine_details.substances_actives': search_regex},
+            {'sections.content.text': search_regex},  # Recherche dans les sections
+            {'sections.subsections.content.text': search_regex},
+            {'sections.subsections.subsections.content.text': search_regex}
+        ]})
+    if substance:
+        pipeline_filters.append({'medicine_details.substances_actives': {'$regex': substance, '$options': 'i'}})
+    if forme:
+        pipeline_filters.append({'medicine_details.forme': {'$regex': forme, '$options': 'i'}})
+    if laboratoire:
+        pipeline_filters.append({'medicine_details.laboratoire': {'$regex': laboratoire, '$options': 'i'}})
+    if dosage:
+        pipeline_filters.append({'medicine_details.dosages': {'$regex': dosage, '$options': 'i'}})
+
+    # Combiner les filtres avec $and
+    if pipeline_filters:
+        query['$and'] = pipeline_filters
+
+    # Calculer le nombre de documents correspondant à la requête
+    total_results = collection.count_documents(query)
+
+    # Gestion du tri
+    if sort_option == 'relevance' and search_query:
+        # Calculer le score de pertinence pour chaque médicament
+        medicines = list(collection.find(query).skip((page - 1) * per_page).limit(per_page))
+        for medicine in medicines:
+            medicine['relevance_score'] = calculate_relevance_score(medicine, search_query)
         
+        # Trier les médicaments par score de pertinence
+        medicines = sorted(medicines, key=lambda x: x['relevance_score'], reverse=True)
+    elif sort_option.startswith('name'):
+        # Tri par nom
+        sort_field = 'title'
+        sort_direction = 1 if sort_option == 'name_asc' else -1
+        medicines = list(collection.find(query).sort([(sort_field, sort_direction)]).skip((page - 1) * per_page).limit(per_page))
+    else:
+        # Tri par date (par défaut)
+        sort_direction = -1 if sort_option == 'date_desc' else 1
+        medicines = list(collection.find(query).skip((page - 1) * per_page).limit(per_page))
+        medicines = sort_medicines_by_date(medicines, sort_direction)
+
+    # Préparer les résultats formatés
+    formatted_results = []
+    for medicine in medicines:
+        # Calculer le score de pertinence si la recherche est effectuée
+        if search_query:
+            relevance_score = calculate_relevance_score(medicine, search_query)
+            medicine['search_matches'] = find_search_term_locations(medicine, search_query)
+        else:
+            relevance_score = 0
+            medicine['search_matches'] = []
+        
+        formatted_results.append({
+            'id': str(medicine['_id']),
+            'title': medicine['title'],
+            'update_date': medicine.get('update_date', 'Non disponible'),
+            'medicine_details': medicine.get('medicine_details', {}),
+            'relevance_score': relevance_score,  # Inclure le score de pertinence
+            'match_count': medicine.get('match_count', 0),
+            'search_matches': medicine['search_matches']
+        })
+
+    # Calculer s'il y a plus de résultats
+    has_more = (page * per_page) < total_results
+
     return jsonify({
-        'stats': {
-            'hits': CACHE_STATS['hits'],
-            'misses': CACHE_STATS['misses'],
-            'total': CACHE_STATS['total'],
-            'hit_rate': f"{hit_rate:.2f}%",
-            'entries': len(QUERY_CACHE),
-            'last_cleanup': CACHE_STATS['last_cleanup']
-        },
-        'cache_info': {
-            'timeout': CACHE_TIMEOUT,
-            'date_converter_cache_info': convert_french_date_cached.cache_info()._asdict()
-        }
+        'results': formatted_results,
+        'has_more': has_more,
+        'total_results': total_results,
+        'total_pages': (total_results + per_page - 1) // per_page
     })
 
-@app.route('/clear-cache')
-def clear_cache():
-    """Vide le cache de requêtes"""
-    global QUERY_CACHE
-    cache_size = len(QUERY_CACHE)
-    QUERY_CACHE = {}
-    
-    # Réinitialiser les statistiques
-    CACHE_STATS['hits'] = 0
-    CACHE_STATS['misses'] = 0
-    CACHE_STATS['total'] = 0
-    CACHE_STATS['last_cleanup'] = time.time()
-    
-    # Vider également le cache LRU des dates
-    convert_french_date_cached.cache_clear()
-    
-    return jsonify({
-        'status': 'success',
-        'message': f'Cache vidé ({cache_size} entrées supprimées)',
-        'timestamp': time.time()
-    })
+@app.route('/api/search-results-stream')
+def search_results_api_stream():
+    search_query = request.args.get('search', '')
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    substance = request.args.get('substance', '')
+    forme = request.args.get('forme', '')
+    laboratoire = request.args.get('laboratoire', '')
+    dosage = request.args.get('dosage', '')
+    sort_option = request.args.get('sort', 'date_desc')
+
+    query = {}
+    pipeline_filters = []
+
+    # Construction de la requête de recherche
+    if search_query:
+        search_regex = {'$regex': search_query, '$options': 'i'}
+        pipeline_filters.append({'$or': [
+            {'title': search_regex},
+            {'medicine_details.substances_actives': search_regex},
+            {'sections.content.text': search_regex},  # Recherche dans les sections
+            {'sections.subsections.content.text': search_regex},
+            {'sections.subsections.subsections.content.text': search_regex}
+        ]})
+    if substance:
+        pipeline_filters.append({'medicine_details.substances_actives': {'$regex': substance, '$options': 'i'}})
+    if forme:
+        pipeline_filters.append({'medicine_details.forme': {'$regex': forme, '$options': 'i'}})
+    if laboratoire:
+        pipeline_filters.append({'medicine_details.laboratoire': {'$regex': laboratoire, '$options': 'i'}})
+    if dosage:
+        pipeline_filters.append({'medicine_details.dosages': {'$regex': dosage, '$options': 'i'}})
+
+    # Combiner les filtres avec $and
+    if pipeline_filters:
+        query['$and'] = pipeline_filters
+
+    def generate():
+        total_results = collection.count_documents(query) # Calculer le nombre total de résultats
+        
+        # Envoyer le nombre total de résultats
+        total_update = json.dumps({'total': total_results})
+        yield f"event: total\ndata: {total_update}\n\n"
+
+        medicines = collection.find(query).skip((page - 1) * per_page).limit(per_page) # Charger les résultats par page
+        
+        result_count = 0
+        for medicine in medicines:
+            if search_query:
+                relevance_score = calculate_relevance_score(medicine, search_query)
+                medicine['search_matches'] = find_search_term_locations(medicine, search_query)
+            else:
+                relevance_score = 0
+                medicine['search_matches'] = []
+            
+            formatted_result = {
+                'id': str(medicine['_id']),
+                'title': medicine['title'],
+                'update_date': medicine.get('update_date', 'Non disponible'),
+                'medicine_details': medicine.get('medicine_details', {}),
+                'relevance_score': relevance_score,
+                'match_count': medicine.get('match_count', 0),
+                'search_matches': medicine['search_matches']
+            }
+            
+            # Convertir le résultat en JSON
+            json_result = json.dumps(formatted_result, ensure_ascii=False)
+            
+            # Envoyer le résultat via le flux d'événements
+            yield f"data: {json_result}\n\n"
+            
+            result_count += 1
+            
+            # Envoyer la mise à jour du compteur
+            count_update = json.dumps({'count': result_count})
+            yield f"event: count\ndata: {count_update}\n\n"
+
+        # Envoyer un événement de fin de flux
+        yield "data: end\n\n"
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 if __name__ == '__main__':
     init_users(app)

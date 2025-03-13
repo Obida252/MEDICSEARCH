@@ -6,15 +6,13 @@ import re
 
 # Connexion à MongoDB
 client = MongoClient("mongodb://localhost:27017/")
-db_name = "medicine_data"
-if db_name in client.list_database_names():
-    counter = 1
-    while f"{db_name}{counter}" in client.list_database_names():
-        counter += 1
-    db_name = f"{db_name}{counter}"
-
+db_name = "medicsearch"
 db = client[db_name]
 collection = db["medicines"]
+
+if collection.count_documents({}) > 0:
+    print("La collection existe déjà, pas d'insertion.")
+    exit()
 
 # Charger les URLs depuis le fichier Excel
 df = pd.read_excel("liens_R.xlsx")
