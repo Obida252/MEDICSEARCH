@@ -1,9 +1,18 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, g, current_app, abort
+from flask import Blueprint, render_template, redirect, url_for, request, flash, make_response, g, current_app, abort, jsonify
 from functools import wraps
 import models  # Changé de "from . import models" à "import models"
 import json
 import base64
 from werkzeug.security import generate_password_hash, check_password_hash
+import datetime
+from scripts.scraper import run_scraper
+
+# Initialiser les attributs statiques pour le suivi du scraping
+run_scraper.is_running = False
+run_scraper.progress = None
+run_scraper.stop_requested = False
+run_scraper.logs = []  # Liste pour stocker les logs de scraping
+run_scraper.next_log_id = 1  # Compteur pour les IDs des logs
 
 # Création du Blueprint utilisateur
 users_bp = Blueprint('users', __name__, template_folder='templates')
@@ -29,7 +38,7 @@ def role_required(min_role):
                 
             if 'role' not in request.cookies or int(request.cookies.get('role')) < min_role:
                 flash("Vous n'avez pas les permissions nécessaires pour accéder à cette page.", "danger")
-                return redirect(url_for('main.index'))
+                return redirect(url_for('index'))
                 
             return f(*args, **kwargs)
         return decorated_function
@@ -49,9 +58,9 @@ def load_logged_in_user():
 # Routes utilisateur
 @users_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """Page d'inscription utilisateur"""
+    """User registration page"""
     if request.cookies.get('user_id'):
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
         
     if request.method == 'POST':
         email = request.form.get('email')
@@ -59,26 +68,54 @@ def register():
         last_name = request.form.get('last_name', '')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
+        role = int(request.form.get('role', 1))  # Default: Patient
         
-        # Vérification des données
-        if not email or not password or not confirm_password:
-            flash("Tous les champs sont obligatoires.", "danger")
+        # Optional fields
+        age = request.form.get('age')
+        profession = request.form.get('profession')
+        company = request.form.get('company')
+        
+        # Data validation
+        if not email or not password or not confirm_password or not first_name or not last_name:
+            flash("All fields marked with an asterisk are required.", "danger")
             return render_template('user/register.html')
             
         if password != confirm_password:
-            flash("Les mots de passe ne correspondent pas.", "danger")
+            flash("Passwords don't match.", "danger")
             return render_template('user/register.html')
         
-        # Création de l'utilisateur
-        user_id = models.User.create(email, password, first_name, last_name)
+        # Create user data dictionary
+        user_data = {
+            'email': email,
+            'first_name': first_name,
+            'last_name': last_name,
+            'role': role
+        }
+        
+        # Add optional fields
+        if age:
+            try:
+                user_data['age'] = int(age)
+            except ValueError:
+                pass
+        
+        if profession:
+            user_data['profession'] = profession
+            
+        if company and role == 2:  # Only for healthcare professionals
+            user_data['company'] = company
+        
+        # Create the user
+        user_id = models.User.create_with_data(email, password, user_data)
+        
         if user_id:
-            # Journaliser l'inscription
+            # Log the registration
             models.Log.create(user_id, models.Log.ACTION_REGISTER)
             
-            flash("Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter.", "success")
+            flash("Your account has been created successfully. You can now log in.", "success")
             return redirect(url_for('users.login'))
         else:
-            flash("Cette adresse email est déjà utilisée. Veuillez en choisir une autre.", "danger")
+            flash("This email address is already in use. Please choose another one.", "danger")
             
     return render_template('user/register.html')
 
@@ -86,7 +123,7 @@ def register():
 def login():
     """Page de connexion utilisateur"""
     if request.cookies.get('user_id'):
-        return redirect(url_for('main.index'))
+        return redirect(url_for('index'))
         
     if request.method == 'POST':
         email = request.form.get('email')
@@ -101,7 +138,7 @@ def login():
             if next_page and next_page.startswith('/'):
                 response = make_response(redirect(next_page))
             else:
-                response = make_response(redirect(url_for('main.index')))
+                response = make_response(redirect(url_for('index')))
             
             # Définir les cookies
             cookie_options = {
@@ -136,7 +173,7 @@ def logout():
         models.Log.create(user_id, models.Log.ACTION_LOGOUT)
     
     # Créer la réponse et supprimer les cookies
-    response = make_response(redirect(url_for('main.index')))
+    response = make_response(redirect(url_for('index')))
     response.delete_cookie('user_id')
     response.delete_cookie('role')
     
@@ -268,7 +305,7 @@ def edit_comment(comment_id):
     rating = request.form.get('rating')
     medicine_id = request.form.get('medicine_id')
     
-    if not content or not medicine_id:
+    if not content or not medicine_id:  # Correction de "ou" à "or"
         flash("Informations manquantes.", "danger")
         return redirect(url_for('main.medicine_details', id=medicine_id))
         
@@ -364,7 +401,38 @@ def admin_users():
         
     users = models.User.list(filters, limit, skip)
     
+    # Ajouter le nom du rôle à chaque utilisateur
+    for user in users:
+        user['role_name'] = models.User.get_role_name(user.get('role', 0))
+    
     return render_template('admin/users.html', users=users, roles=models.User.ROLE_NAMES)
+
+# Ajouter la route admin_roles qui était manquante
+@users_bp.route('/admin/roles')
+@role_required(models.User.ROLE_ADMIN)
+def admin_roles():
+    """Page d'administration des rôles"""
+    # Récupérer tous les rôles
+    roles = models.Role.get_all_roles()
+    return render_template('admin/roles.html', roles=roles)
+
+@users_bp.route('/admin/roles/<int:role_id>/permissions', methods=['POST'])
+@role_required(models.User.ROLE_ADMIN)
+def admin_update_role_permissions(role_id):
+    """Mettre à jour les permissions d'un rôle"""
+    if not request.is_json:
+        return jsonify({"status": "error", "message": "Content-Type doit être application/json"}), 400
+        
+    data = request.get_json()
+    permissions = data.get('permissions')
+    
+    if not permissions:
+        return jsonify({"status": "error", "message": "Aucune permission fournie"}), 400
+    
+    if models.Role.update_permissions(role_id, permissions):
+        return jsonify({"status": "success"})
+    else:
+        return jsonify({"status": "error", "message": "Mise à jour échouée"}), 500
 
 @users_bp.route('/admin/users/<user_id>', methods=['GET', 'POST'])
 @role_required(models.User.ROLE_ADMIN)
@@ -398,6 +466,304 @@ def admin_edit_user(user_id):
         return redirect(url_for('users.admin_users'))
         
     return render_template('admin/edit_user.html', user=user, roles=models.User.ROLE_NAMES)
+
+@users_bp.route('/admin/database')
+@role_required(models.User.ROLE_ADMIN)
+def admin_database():
+    """Page d'administration de la base de données"""
+    # Utiliser la connexion MongoDB à travers mongo.db au lieu de current_app.db
+    db = models.mongo.db
+    
+    # Récupérer les métadonnées de scraping
+    metadata = db.metadata.find_one({"_id": "scraping_metadata"})
+    
+    # Obtenir des statistiques sur la base de données
+    total_medicines = db.medicines.count_documents({})
+    
+    # Récupérer les dates des 5 dernières mises à jour de médicaments
+    latest_updates = list(db.medicines.find({}, {"title": 1, "update_date": 1, "last_scraped": 1})
+                         .sort("last_scraped", -1).limit(5))
+    
+    # Récupérer des statistiques de base
+    lab_count = len(db.medicines.distinct("medicine_details.laboratoire"))
+    substance_count = len(db.medicines.distinct("medicine_details.substances_actives"))
+    
+    # Import datetime pour le contexte du template
+    import datetime
+    
+    return render_template('user/admin_database.html', 
+                          metadata=metadata,
+                          total_medicines=total_medicines,
+                          latest_updates=latest_updates,
+                          lab_count=lab_count,
+                          substance_count=substance_count,
+                          now=datetime.datetime.now(),
+                          datetime=datetime)  # Passer le module datetime au contexte
+
+@users_bp.route('/admin/run_scraper', methods=['POST'])
+@role_required(models.User.ROLE_ADMIN)
+def admin_run_scraper():
+    """Exécute le script de scraping depuis l'interface d'administration"""
+    try:
+        # Pour les requêtes AJAX, retourner un JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Vérifier si un scraping est déjà en cours
+            if run_scraper.is_running:
+                return jsonify({
+                    "status": "error",
+                    "message": "Un processus de scraping est déjà en cours"
+                })
+                
+            # Réinitialiser la tâche de scraping actuelle pour forcer un scraping complet
+            try:
+                models.mongo.db.metadata.delete_one({"_id": "scraping_current_task"})
+            except Exception as e:
+                print(f"Erreur lors de la réinitialisation de la tâche de scraping: {str(e)}")
+            
+            # Lancer le scraping de manière asynchrone
+            from threading import Thread
+            import sys
+            import traceback
+            
+            # Réinitialiser les logs
+            run_scraper.logs = []
+            run_scraper.next_log_id = 1
+            
+            # Fonction pour ajouter un log sans utiliser print
+            def add_log(message, level="info"):
+                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                log_entry = {
+                    "id": run_scraper.next_log_id,
+                    "timestamp": timestamp,
+                    "message": message,
+                    "level": level
+                }
+                run_scraper.logs.append(log_entry)
+                run_scraper.next_log_id += 1
+                
+                # Print to original stderr to avoid recursion
+                # The statement below only logs to the server console, not to our log collector
+                if hasattr(add_log, 'original_stderr'):
+                    add_log.original_stderr.write(f"[SCRAPING {level.upper()}] {message}\n")
+                    add_log.original_stderr.flush()
+            
+            # Fonction pour exécuter le scraping dans un thread séparé
+            def run_async_scraper():
+                try:
+                    # Initialiser le suivi de progression
+                    run_scraper.is_running = True
+                    run_scraper.progress = {
+                        "percent": 0,
+                        "current": 0,
+                        "total": 0,
+                        "new_added": 0,
+                        "updated": 0,
+                        "unchanged": 0,
+                        "errors": 0
+                    }
+                    
+                    add_log("Démarrage du processus de scraping...")
+                    
+                    # Rediriger les sorties stdout et stderr du scraper vers notre système de logs
+                    class LogRedirector:
+                        def __init__(self, level="info"):
+                            self.buffer = ""
+                            self.level = level
+                        
+                        def write(self, text):
+                            if text.strip():  # Ignorer les lignes vides
+                                # Déterminer le niveau de journalisation
+                                log_level = self.level
+                                if "Erreur" in text or "error" in text.lower() or "exception" in text.lower():
+                                    log_level = "error"
+                                elif "warning" in text.lower() or "attention" in text.lower():
+                                    log_level = "warning"
+                                
+                                # Ajouter directement à la liste des logs sans appeler add_log
+                                timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                                log_entry = {
+                                    "id": run_scraper.next_log_id,
+                                    "timestamp": timestamp,
+                                    "message": text.strip(),
+                                    "level": log_level
+                                }
+                                run_scraper.logs.append(log_entry)
+                                run_scraper.next_log_id += 1
+                                
+                                # Écrire également dans le stderr original pour les logs serveur
+                                if hasattr(add_log, 'original_stderr'):
+                                    add_log.original_stderr.write(f"[SCRAPING {log_level.upper()}] {text.strip()}\n")
+                                    add_log.original_stderr.flush()
+                        
+                        def flush(self):
+                            pass
+                    
+                    # Exécuter le scraper avec la base de données MongoDB en capturant la sortie
+                    old_stdout = sys.stdout
+                    old_stderr = sys.stderr
+                    
+                    # Stocker les streams originaux pour pouvoir y écrire sans déclencher de récursion
+                    add_log.original_stdout = old_stdout
+                    add_log.original_stderr = old_stderr
+                    
+                    # Rediriger stdout et stderr
+                    sys.stdout = LogRedirector("info")
+                    sys.stderr = LogRedirector("error")
+                    
+                    try:
+                        from scripts.scraper import run_scraper as actual_run_scraper
+                        results = actual_run_scraper(db_connection=models.mongo.db)
+                        add_log(f"Scraping terminé avec succès! Résultats: {results}")
+                    except Exception as e:
+                        add_log(f"Erreur pendant le scraping: {str(e)}", "error")
+                        # Écrire directement le traceback au lieu d'utiliser add_log pour éviter le formatage
+                        error_text = traceback.format_exc()
+                        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        log_entry = {
+                            "id": run_scraper.next_log_id,
+                            "timestamp": timestamp,
+                            "message": error_text,
+                            "level": "error"
+                        }
+                        run_scraper.logs.append(log_entry)
+                        run_scraper.next_log_id += 1
+                    finally:
+                        # Restaurer les sorties standard
+                        sys.stdout = old_stdout
+                        sys.stderr = old_stderr
+                    
+                    # Marquer comme terminé
+                    run_scraper.is_running = False
+                    run_scraper.progress = None
+                    
+                except Exception as e:
+                    # En cas d'erreur, marquer également comme terminé
+                    run_scraper.is_running = False
+                    run_scraper.progress = None
+                    
+                    # Utiliser un autre moyen pour enregistrer cette erreur
+                    error_message = f"Erreur dans le thread de scraping: {str(e)}"
+                    error_trace = traceback.format_exc()
+                    
+                    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    run_scraper.logs.append({
+                        "id": run_scraper.next_log_id,
+                        "timestamp": timestamp,
+                        "message": error_message,
+                        "level": "error"
+                    })
+                    run_scraper.next_log_id += 1
+                    
+                    run_scraper.logs.append({
+                        "id": run_scraper.next_log_id,
+                        "timestamp": timestamp,
+                        "message": error_trace,
+                        "level": "error"
+                    })
+                    run_scraper.next_log_id += 1
+                    
+                    # Afficher l'erreur dans la console serveur
+                    print(f"ERREUR CRITIQUE dans le thread de scraping: {error_message}")
+                    print(error_trace)
+            
+            # Démarrer le thread
+            add_log("Initialisation du thread de scraping...")
+            thread = Thread(target=run_async_scraper)
+            thread.daemon = True  # Le thread s'arrêtera quand le programme principal s'arrêtera
+            thread.start()
+            
+            return jsonify({
+                "status": "started",
+                "message": "Scraping démarré avec succès"
+            })
+        else:
+            # Pour les requêtes normales (non-AJAX), rediriger après le traitement
+            # Exécuter le scraper avec la base de données MongoDB
+            from scripts.scraper import run_scraper as direct_run_scraper
+            results = direct_run_scraper(db_connection=models.mongo.db)
+            
+            # Informer l'utilisateur des résultats
+            flash(f"Scraping terminé avec succès. {results.get('new_added', 0)} nouveaux médicaments ajoutés, {results.get('updated', 0)} mis à jour.", "success")
+            
+            # Rediriger vers la page d'administration de la base de données
+            return redirect(url_for('users.admin_database'))
+            
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ERREUR CRITIQUE dans admin_run_scraper: {str(e)}")
+        print(error_details)
+        
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({
+                "status": "error",
+                "message": f"Erreur lors du scraping: {str(e)}",
+                "details": error_details
+            })
+        else:
+            flash(f"Erreur lors du scraping: {str(e)}", "danger")
+            return redirect(url_for('users.admin_database'))
+
+# Nouveaux endpoints pour gérer le statut du scraping
+@users_bp.route('/admin/scraper/status', methods=['GET'])
+@role_required(models.User.ROLE_ADMIN)
+def admin_scraper_status():
+    """Retourne l'état actuel du processus de scraping"""
+    # Vérifier si un processus de scraping est en cours
+    if hasattr(run_scraper, 'is_running') and run_scraper.is_running:
+        return jsonify({
+            "status": "running",
+            "progress": run_scraper.progress
+        })
+    else:
+        return jsonify({
+            "status": "idle"
+        })
+
+@users_bp.route('/admin/scraper/logs', methods=['GET'])
+@role_required(models.User.ROLE_ADMIN)
+def admin_scraper_logs():
+    """Renvoie les logs du scraping depuis un ID donné"""
+    since_id = int(request.args.get('since', 0))
+    
+    # Récupérer les logs avec un ID supérieur à since_id
+    filtered_logs = [log for log in getattr(run_scraper, 'logs', []) if log['id'] > since_id]
+    
+    # Limiter à 100 logs maximum pour éviter de surcharger la réponse
+    filtered_logs = filtered_logs[-100:] if len(filtered_logs) > 100 else filtered_logs
+    
+    return jsonify({
+        "logs": filtered_logs
+    })
+
+@users_bp.route('/admin/scraper/stop', methods=['POST'])
+@role_required(models.User.ROLE_ADMIN)
+def admin_stop_scraper():
+    """Arrêter le processus de scraping en cours"""
+    if hasattr(run_scraper, 'is_running') and run_scraper.is_running:
+        # Signaler au scraper qu'il doit s'arrêter
+        print("Demande d'arrêt du scraping reçue...")
+        run_scraper.stop_requested = True
+        
+        # Ajouter également un message dans les logs
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        run_scraper.logs.append({
+            "id": run_scraper.next_log_id,
+            "timestamp": timestamp,
+            "message": "Demande d'arrêt du scraping reçue. Arrêt en cours...",
+            "level": "warning"
+        })
+        run_scraper.next_log_id += 1
+        
+        return jsonify({
+            "status": "stopped",
+            "message": "Demande d'arrêt envoyée"
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "Aucun processus de scraping en cours"
+        })
 
 # Fonction pour initialiser le blueprint avec l'application Flask
 def init_users(app):

@@ -7,8 +7,9 @@ import time
 import hashlib
 from functools import lru_cache
 import os
-from models import init_db
-import users  # Changé de "from users import init_users" à "import users"
+import datetime
+from models import init_db, mongo
+import users
 from config import get_config
 
 app = Flask(__name__)
@@ -25,16 +26,11 @@ except:
     db = client['medicsearch']
 collection = db['medicines']
 
-# Système de cache global pour les requêtes MongoDB
+# Important: Initialiser la base de données avant de définir app.db
+init_db(app)
 
-
-
-
-
-
-
-
-
+# Définir db comme attribut de l'application pour qu'il soit accessible partout
+app.db = db
 
 # Fonction pour convertir les objets BSON en JSON serializable
 def bson_to_json(data):
@@ -893,8 +889,11 @@ def internal_server_error(e):
 
 # Fonction pour créer un context processor qui sera disponible dans tous les templates
 @app.context_processor
-def inject_user():
-    return dict(user=g.get('user', None))
+def inject_user_and_date():
+    return {
+        'user': g.get('user', None),
+        'now': datetime.datetime.now()
+    }
 
 if __name__ == '__main__':
     # Initialiser la base de données
@@ -904,3 +903,37 @@ if __name__ == '__main__':
     users.init_users(app)  # Changé de "init_users(app)" à "users.init_users(app)"
     
     app.run(debug=app.config['DEBUG'])
+
+@users_bp.route('/admin/database')
+@role_required(models.User.ROLE_ADMIN)
+def admin_database():
+    """Page d'administration de la base de données"""
+    # Utiliser la connexion MongoDB à travers mongo.db au lieu de current_app.db
+    db = models.mongo.db
+    
+    # Récupérer les métadonnées de scraping
+    metadata = db.metadata.find_one({"_id": "scraping_metadata"})
+    
+    # Obtenir des statistiques sur la base de données
+    total_medicines = db.medicines.count_documents({})
+    
+    # Récupérer les dates des 5 dernières mises à jour de médicaments
+    # Modifier pour utiliser uniquement update_date au lieu de last_scraped
+    latest_updates = list(db.medicines.find({}, {"title": 1, "update_date": 1})
+                         .sort("_id", -1).limit(5))  # Tri par ID au lieu de last_scraped
+    
+    # Récupérer des statistiques de base
+    lab_count = len(db.medicines.distinct("medicine_details.laboratoire"))
+    substance_count = len(db.medicines.distinct("medicine_details.substances_actives"))
+    
+    # Import datetime pour le contexte du template
+    import datetime
+    
+    return render_template('user/admin_database.html', 
+                          metadata=metadata,
+                          total_medicines=total_medicines,
+                          latest_updates=latest_updates,
+                          lab_count=lab_count,
+                          substance_count=substance_count,
+                          now=datetime.datetime.now(),
+                          datetime=datetime)  # Passer le module datetime au contexte

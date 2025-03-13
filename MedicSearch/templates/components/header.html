@@ -1,14 +1,14 @@
 <header>
     <div class="header-grid">
         <div class="logo">
-            <a href="/" class="logo-link">
+            <a href="{{ url_for('index') }}" class="logo-link">
                 <h1>MEDICSEARCH</h1>
                 <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
             </a>
         </div>
         <nav>
             <ul>
-                <li><a href="/search" {% if active_page == 'search' %}class="active"{% endif %}>RECHERCHE</a></li>
+                <li><a href="{{ url_for('search') }}" {% if active_page == 'search' %}class="active"{% endif %}>RECHERCHE</a></li>
                 {% if user %}
                     {% if user.role >= 4 %}
                     <!-- Menu admin visible uniquement pour les administrateurs -->
@@ -18,14 +18,14 @@
                         </a>
                         <div class="dropdown-menu">
                             <a href="{{ url_for('users.admin_users') }}">Gestion des utilisateurs</a>
-                            <a href="#">Statistiques</a>
-                            <a href="#">Configuration</a>
+                            <a href="{{ url_for('users.admin_roles') }}">Gestion des rôles</a>
+                            <a href="{{ url_for('users.admin_database') }}">Base de données</a>
                         </div>
                     </li>
                     {% endif %}
                     <li class="dropdown">
                         <a href="#" class="dropdown-toggle {% if active_page == 'profile' %}active{% endif %}">
-                            <i class="fas fa-user-circle"></i> {{ user.first_name or 'Utilisateur' }} <i class="fas fa-caret-down"></i>
+                            <i class="fas fa-user"></i> MON COMPTE <i class="fas fa-caret-down"></i>
                         </a>
                         <div class="dropdown-menu">
                             <a href="{{ url_for('users.profile') }}">Mon profil</a>
@@ -34,10 +34,17 @@
                         </div>
                     </li>
                 {% else %}
-                    <li><a href="{{ url_for('users.login') }}" class="login-btn">S'IDENTIFIER</a></li>
+                    <li><a href="{{ url_for('users.login') }}" {% if active_page == 'login' %}class="active"{% endif %}>CONNEXION</a></li>
+                    <li><a href="{{ url_for('users.register') }}" {% if active_page == 'register' %}class="active"{% endif %}>INSCRIPTION</a></li>
                 {% endif %}
             </ul>
         </nav>
+        <div class="header-search">
+            <form action="{{ url_for('search') }}" method="get">
+                <input type="text" name="search" placeholder="Rechercher un médicament..." class="search-input">
+                <button type="submit" class="search-button"><i class="fas fa-search"></i></button>
+            </form>
+        </div>
     </div>
 </header>
 <style>
