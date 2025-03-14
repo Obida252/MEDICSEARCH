@@ -15,6 +15,9 @@ load_dotenv()
 # Get API key from environment variables
 MISTRAL_API_KEY = os.getenv('MISTRAL_API_KEY')
 
+# Cache duration in seconds (10 minutes)
+CACHE_DURATION = 600
+
 def generate_medicine_summary(medicine):
     """
     Generate an AI summary of the medicine using Mistral AI
@@ -161,34 +164,43 @@ def get_or_generate_summary(medicine, db=None):
         str: AI-generated or cached summary
     """
     medicine_id = medicine.get('_id')
+    current_time = int(time.time())
     
     # Check if we already have a summary in the medicine object
     if medicine.get('ai_summary'):
-        return medicine['ai_summary']
+        # If we have summary_timestamp and it's less than 10 minutes old, use it
+        if medicine.get('summary_timestamp') and (current_time - medicine.get('summary_timestamp') < CACHE_DURATION):
+            return medicine['ai_summary']
     
-    # If db is provided, check if summary exists in database - FIX: Use "is not None" instead of truthy value
+    # If db is provided, check if summary exists in database and is recent enough
     if db is not None:
         try:
             # Find the medicine and check if it has an ai_summary field
             stored_medicine = db.medicines.find_one(
                 {"_id": medicine_id}, 
-                {"ai_summary": 1}
+                {"ai_summary": 1, "summary_timestamp": 1}
             )
             
             if stored_medicine and 'ai_summary' in stored_medicine:
-                return stored_medicine['ai_summary']
+                # Check if summary is less than 10 minutes old
+                if 'summary_timestamp' in stored_medicine and (current_time - stored_medicine['summary_timestamp'] < CACHE_DURATION):
+                    return stored_medicine['ai_summary']
+                    
         except Exception as e:
             logger.error(f"Error checking for cached summary: {e}")
     
     # Generate new summary
     summary = generate_medicine_summary(medicine)
     
-    # Save to database if possible - FIX: Use "is not None" instead of truthy value
+    # Save to database if possible with timestamp
     if db is not None:
         try:
             db.medicines.update_one(
                 {"_id": medicine_id},
-                {"$set": {"ai_summary": summary}}
+                {"$set": {
+                    "ai_summary": summary,
+                    "summary_timestamp": current_time
+                }}
             )
         except Exception as e:
             logger.error(f"Error saving summary to database: {e}")

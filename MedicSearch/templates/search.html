@@ -603,6 +603,15 @@
             box-shadow: 0 3px 8px rgba(0, 123, 255, 0.15);
         }
         
+        /* Style pour les termes surlignés dans les résultats de recherche */
+        .highlight-term {
+            background-color: rgba(255, 194, 0, 0.3);
+            color: #000;
+            font-weight: 600;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+        
         /* Responsive adjustments */
         @media (max-width: 768px) {
             .search-banner h2 {
@@ -861,10 +870,23 @@
                 if (medicine.search_matches && medicine.search_matches.length > 0) {
                     matchesHTML = `<div class="medicine-matches">`;
                     for (const match of medicine.search_matches) {
+                        // Highlight search terms in the text
+                        const searchQuery = new URLSearchParams(window.location.search).get('search') || '';
+                        let highlightedText = match.text;
+                        
+                        if (searchQuery) {
+                            // Create regex for the search term to highlight, case insensitive
+                            const terms = searchQuery.split(' ').filter(term => term.length > 2);
+                            terms.forEach(term => {
+                                const regex = new RegExp(`(${term})`, 'gi');
+                                highlightedText = highlightedText.replace(regex, '<span class="highlight-term">$1</span>');
+                            });
+                        }
+                        
                         matchesHTML += `
                             <div class="match-item">
                                 <span class="match-location">${match.location}:</span>
-                                <span>${match.text}</span>
+                                <span>${highlightedText}</span>
                             </div>
                         `;
                     }
