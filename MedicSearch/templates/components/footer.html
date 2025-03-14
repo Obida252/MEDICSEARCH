@@ -1,27 +1,37 @@
 <footer>
-    <div class="footer-grid">
-        <div class="footer-col">
-            <h4>MEDICSEARCH</h4>
-            <p>Une référence pour l'information médicamenteuse.</p>
+    <style>
+        footer {
+            background-color: #f8f9fa;
+            padding: 30px 0;
+            margin-top: 60px;
+            border-top: 1px solid #eee;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .footer-text {
+            color: #6c757d;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .footer-iut {
+            margin-top: 10px;
+            color: #007bff;
+            font-weight: 600;
+        }
+    </style>
+    
+    <div class="footer-content">
+        <div class="footer-text">
+            <p>&copy; {{ now.year }} MedicSearch. Tous droits réservés.</p>
+            <p>Ce site est conçu à des fins éducatives uniquement.</p>
+            <p class="footer-iut">IUT-Créteil-Vitry</p>
         </div>
-        <div class="footer-col">
-            <h4>PROJET</h4>
-            <ul>
-                <li><i class="fas fa-code"></i> SAE5.01</li>
-                <li><i class="fas fa-university"></i> IUT Créteil-Vitry</li>
-                <li><i class="fas fa-calendar-alt"></i> {{ now.year }}</li>
-            </ul>
-        </div>
-    </div>
-    <div class="copyright">
-        <p>&copy; {{ now.year }} MedicSearch. Projet académique.</p>
     </div>
 </footer>
-
-<style>
-    .footer-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 40px;
-    }
-</style>

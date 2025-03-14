@@ -7,6 +7,347 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Enhanced styling for the homepage */
+        section {
+            margin-bottom: 60px;
+        }
+        
+        .hero {
+            background: linear-gradient(135deg, rgba(0, 123, 255, 0.85) 0%, rgba(0, 86, 179, 0.85) 100%), 
+                        url('https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            padding: 120px 0;
+            border-radius: 0 0 30px 30px;
+            margin-bottom: 60px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .hero h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border-bottom: none;
+        }
+        
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .btn-primary {
+            background-color: #fff;
+            color: #007bff;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            background-color: #f8f9fa;
+        }
+        
+        .btn-secondary {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-block;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .btn-secondary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            background-color: #0069d9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Statistics section */
+        .statistics {
+            text-align: center;
+            padding: 40px 0;
+        }
+        
+        .statistics h2 {
+            margin-bottom: 40px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .statistics h2:after {
+            content: '';
+            position: absolute;
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent); /* Changed from #007bff to #ffffff */
+            bottom: -10px;
+            left: 20%;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .stat-card {
+            background-color: #fff;
+            border-radius: 12px;
+            padding: 30px 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #007bff;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Features section */
+        .featured-attractions {
+            padding: 60px 0;
+            background-color: #f8f9fa;
+            border-radius: 20px;
+            margin: 0 20px;
+        }
+        
+        .featured-attractions h2 {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .featured-attractions h2:after {
+            content: '';
+            position: absolute;
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #ffffff, transparent); /* Changed from #007bff to #ffffff */
+            bottom: -10px;
+            left: 20%;
+        }
+        
+        .attraction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .attraction {
+            background-color: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s;
+        }
+        
+        .attraction:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        
+        .attraction img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .attraction h3 {
+            padding: 20px 20px 10px;
+            font-size: 1.3rem;
+        }
+        
+        .attraction .stats {
+            padding: 0 20px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .attraction .rating {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .featured-attractions .text-center {
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        /* About section */
+        .about {
+            padding: 60px 0;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 20px;
+            margin: 0 20px;
+        }
+        
+        .about-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .about__text {
+            flex: 1;
+        }
+        
+        .about__text h2 {
+            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .about__text h2:after {
+            content: '';
+            position: absolute;
+            width: 60%;
+            height: 3px;
+            background: linear-gradient(90deg, #ffffff, transparent); /* Changed from #007bff to #ffffff */
+            bottom: -10px;
+            left: 0;
+        }
+        
+        .about__text p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            color: #495057;
+        }
+        
+        .about__image {
+            flex: 1;
+        }
+        
+        .about__image img {
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        /* New AI feature section */
+        .ai-feature {
+            padding: 60px 0;
+            background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%);
+            border-radius: 20px;
+            margin: 40px 20px;
+            color: white;
+        }
+        
+        .ai-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+        }
+        
+        .ai-image {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .ai-image i {
+            font-size: 120px;
+            color: rgba(255,255,255,0.9);
+            text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .ai-text {
+            flex: 2;
+        }
+        
+        .ai-text h2 {
+            margin-bottom: 20px;
+            font-size: 2.2rem;
+        }
+        
+        .ai-text p {
+            margin-bottom: 20px;
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+        
+        .ai-btn {
+            background-color: white;
+            color: #9c27b0;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .ai-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            background-color: #f8f9fa;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .about-content, .ai-content {
+                flex-direction: column;
+            }
+            
+            .about__image, .ai-image {
+                order: -1;
+            }
+            
+            .hero h2 {
+                font-size: 2.2rem;
+            }
+            
+            .hero p {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
 </head>
 <body>
     {% with active_page='home' %}
@@ -46,6 +387,23 @@
             </div>
         </section>
 
+        <!-- New AI Summary Feature Section -->
+        <section class="ai-feature">
+            <div class="container">
+                <div class="ai-content">
+                    <div class="ai-text">
+                        <h2>RÉSUMÉS PAR INTELLIGENCE ARTIFICIELLE</h2>
+                        <p>Découvrez notre nouvelle fonctionnalité qui utilise la puissance de l'IA pour générer des résumés clairs et concis de chaque médicament.</p>
+                        <p>Comprenez rapidement les principales utilisations, le fonctionnement et les précautions importantes en un coup d'œil.</p>
+                        <a href="/search" class="ai-btn">EXPLORER MAINTENANT</a>
+                    </div>
+                    <div class="ai-image">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <section class="featured-attractions">
             <div class="container">
                 <h2>FONCTIONNALITÉS PRINCIPALES</h2>
@@ -72,7 +430,9 @@
                         </div>
                     </div>
                 </div>
-                <a href="/search" class="btn-secondary">EXPLORER LA BASE DE DONNÉES</a>
+                <div class="text-center">
+                    <a href="/search" class="btn-secondary">EXPLORER LA BASE DE DONNÉES</a>
+                </div>
             </div>
         </section>
 

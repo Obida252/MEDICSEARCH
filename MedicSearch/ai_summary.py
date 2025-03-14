@@ -84,8 +84,16 @@ def generate_medicine_summary(medicine):
     3. Mention brève des effets secondaires courants le cas échéant
     4. Précautions d'emploi importantes
     
-    Format: HTML avec des balises <p> appropriées. Maximum 3-4 paragraphes.
-    Ton: Informatif et accessible, adapté à un large public.
+    INSTRUCTIONS DE FORMATAGE IMPORTANTES:
+    - Utilise UNIQUEMENT du HTML simple (pas de Markdown)
+    - Format: paragraphes avec balises <p> </p>
+    - Pour le texte en gras, utilise <strong> </strong>
+    - Pour l'italique, utilise <em> </em>
+    - Mets en gras (<strong>) les noms de maladies, symptômes et termes médicaux importants
+    - Mets également en gras les précautions d'emploi cruciales
+    - Maximum 3-4 paragraphes
+    - Ton: Informatif et accessible, adapté à un large public
+    - N'UTILISE PAS de balises de code comme ```html au début ou à la fin
     """
     
     try:
@@ -108,13 +116,16 @@ def generate_medicine_summary(medicine):
         # Extract the generated summary
         summary = chat_response.choices[0].message.content
         
+        # Clean up the formatting
+        summary = clean_summary_format(summary)
+        
         # Ensure the summary has proper HTML formatting
         if not summary.strip().startswith('<p>'):
             summary = "<p>" + summary.replace("\n\n", "</p><p>") + "</p>"
             summary = summary.replace("<p></p>", "")
         
-        return clean_summary_format(summary)
-    
+        return summary
+        
     except Exception as e:
         logger.error(f"Erreur lors de la génération du résumé IA: {e}")
         return f"<p>Impossible de générer un résumé pour le moment. Veuillez réessayer plus tard. Erreur: {str(e)}</p>"
@@ -123,11 +134,20 @@ def clean_summary_format(summary):
     """Clean up any markdown or code block formatting from the summary"""
     # Remove code block markers with language specifiers (like ```html, ```markdown, etc.)
     summary = re.sub(r'```[a-zA-Z]*', '', summary)
-    # Remove code block markers
+    
+    # Remove closing code block markers
     summary = re.sub(r'```', '', summary)
-    # Remove any other unwanted markdown formatting
+    
+    # Remove inline code markers
     summary = re.sub(r'`', '', summary)
-    return summary
+    
+    # Convert Markdown bold (**text**) to HTML bold (<strong>text</strong>)
+    summary = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', summary)
+    
+    # Convert Markdown italic (*text*) to HTML italic (<em>text</em>)
+    summary = re.sub(r'\*([^\*]+)\*', r'<em>\1</em>', summary)
+    
+    return summary.strip()
 
 def get_or_generate_summary(medicine, db=None):
     """

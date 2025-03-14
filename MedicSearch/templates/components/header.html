@@ -1,143 +1,218 @@
-<header>
-    <div class="header-grid">
-        <div class="logo">
-            <a href="{{ url_for('index') }}" class="logo-link">
-                <h1>MEDICSEARCH</h1>
-                <span class="tagline">BASE DE DONNÉES MÉDICAMENTEUSE</span>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <style>
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+        }
+        
+        .logo-icon {
+            color: #007bff;
+            font-size: 1.8rem;
+            margin-right: 10px;
+        }
+        
+        .logo-text {
+            font-weight: 700;
+            color: #333;
+            font-size: 1.5rem;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .search-icon {
+            color: #007bff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: color 0.3s;
+            padding: 8px;
+            border-radius: 50%;
+            background-color: #f0f7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+        
+        .search-icon:hover {
+            background-color: #e0f0ff;
+            color: #0056b3;
+        }
+        
+        .auth-link {
+            padding: 8px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            color: #007bff;
+            border: 2px solid #007bff;
+        }
+        
+        .auth-link:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+
+        /* Dropdown for user menu */
+        .user-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #fff;
+            min-width: 180px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .dropdown-content a {
+            color: #333;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: background 0.3s;
+        }
+
+        .dropdown-content a:hover {
+            background-color: #f5f5f5;
+        }
+
+        .dropdown-divider {
+            height: 1px;
+            margin: 5px 0;
+            background-color: #eee;
+        }
+
+        .user-dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* Mobile menu */
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #333;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .menu-toggle {
+                display: block;
+            }
+            
+            .header-actions {
+                display: none;
+                flex-direction: column;
+                position: absolute;
+                top: 70px;
+                left: 0;
+                right: 0;
+                background-color: white;
+                padding: 20px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+            
+            .header-actions.show {
+                display: flex;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <a href="/" class="logo">
+                <i class="fas fa-pills logo-icon"></i>
+                <span class="logo-text">MedicSearch</span>
             </a>
-        </div>
-        <nav>
-            <ul>
-                <li><a href="{{ url_for('search') }}" {% if active_page == 'search' %}class="active"{% endif %}><i class="fas fa-search"></i> RECHERCHE</a></li>
-                {% if user %}
-                    {% if user.role >= 4 %}
-                    <!-- Menu admin visible uniquement pour les administrateurs -->
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle {% if active_page == 'admin' %}active{% endif %}">
-                            <i class="fas fa-shield-alt"></i> ADMIN <i class="fas fa-caret-down"></i>
-                        </a>
-                        <div class="dropdown-menu">
-                            <a href="{{ url_for('users.admin_users') }}">Gestion des utilisateurs</a>
-                            <a href="{{ url_for('users.admin_roles') }}">Gestion des rôles</a>
-                            <a href="{{ url_for('users.admin_database') }}">Base de données</a>
+            
+            <button class="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            
+            <div class="header-actions">
+                <a href="/search" class="search-icon" title="Rechercher">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+                {% if g.user %}
+                    <div class="user-dropdown">
+                        <div class="user-avatar">
+                            {% if g.user.first_name %}
+                                {{ g.user.first_name[0] }}{{ g.user.last_name[0] if g.user.last_name else '' }}
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
                         </div>
-                    </li>
-                    {% endif %}
-                    <li class="dropdown">
-                        <a href="#" class="dropdown-toggle account-btn {% if active_page == 'profile' %}active{% endif %}">
-                            <i class="fas fa-user"></i> MON COMPTE <i class="fas fa-caret-down"></i>
-                        </a>
-                        <div class="dropdown-menu">
+                        <div class="dropdown-content">
                             <a href="{{ url_for('users.profile') }}">Mon profil</a>
                             <a href="{{ url_for('users.favorites') }}">Mes favoris</a>
+                            {% if g.user.role >= 4 %}
+                                <div class="dropdown-divider"></div>
+                                <a href="{{ url_for('users.admin_users') }}">Administration</a>
+                            {% endif %}
+                            <div class="dropdown-divider"></div>
                             <a href="{{ url_for('users.logout') }}">Déconnexion</a>
                         </div>
-                    </li>
+                    </div>
                 {% else %}
-                    <li><a href="{{ url_for('users.login') }}" {% if active_page == 'login' %}class="active"{% endif %}>CONNEXION</a></li>
-                    <li><a href="{{ url_for('users.register') }}" {% if active_page == 'register' %}class="active"{% endif %}>INSCRIPTION</a></li>
+                    <a href="{{ url_for('users.login') }}" class="auth-link">Connexion</a>
                 {% endif %}
-            </ul>
-        </nav>
-    </div>
-</header>
-<style>
-    .logo-link {
-        text-decoration: none;
-        color: inherit;
-    }
+            </div>
+        </div>
+    </header>
     
-    .login-btn {
-        background-color: #e53935;
-        color: white !important;
-        padding: 8px 16px;
-        border-radius: 4px;
-        transition: background-color 0.3s;
-    }
-    
-    .login-btn:hover {
-        background-color: #c62828;
-    }
-    
-    /* Style pour le bouton "MON COMPTE" en rouge */
-    .account-btn {
-        color: #e53935 !important;
-        font-weight: bold;
-    }
-    
-    /* Styles pour le menu déroulant */
-    .dropdown {
-        position: relative;
-        display: inline-block;
-    }
-    
-    .dropdown-toggle {
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-    }
-    
-    .dropdown-toggle i.fa-caret-down {
-        margin-left: 5px;
-        font-size: 0.8rem;
-    }
-    
-    .dropdown-menu {
-        display: none;
-        position: absolute;
-        background-color: white;
-        min-width: 160px;
-        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-        z-index: 1000;
-        border-radius: 4px;
-        right: 0;
-    }
-    
-    .dropdown-menu a {
-        color: black;
-        padding: 12px 16px;
-        text-decoration: none;
-        display: block;
-        font-size: 0.9rem;
-        text-transform: none;
-    }
-    
-    .dropdown-menu a:hover {
-        background-color: #f1f1f1;
-        color: #e53935;
-    }
-    
-    .dropdown:hover .dropdown-menu {
-        display: block;
-    }
-</style>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Gérer les clics en dehors des menus déroulants pour les fermer
-        document.addEventListener('click', function(e) {
-            const dropdowns = document.querySelectorAll('.dropdown-menu');
-            if (!e.target.matches('.dropdown-toggle') && !e.target.closest('.dropdown-menu')) {
-                dropdowns.forEach(dropdown => {
-                    dropdown.style.display = 'none';
-                });
-            }
+    <script>
+        document.querySelector('.menu-toggle').addEventListener('click', function() {
+            document.querySelector('.header-actions').classList.toggle('show');
         });
-        
-        // Toggle manuel pour les menus déroulants
-        document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
-            toggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                const menu = this.nextElementSibling;
-                if (menu.style.display === 'block') {
-                    menu.style.display = 'none';
-                } else {
-                    // Fermer tous les autres menus
-                    document.querySelectorAll('.dropdown-menu').forEach(dropdown => {
-                        dropdown.style.display = 'none';
-                    });
-                    menu.style.display = 'block';
-                }
-            });
-        });
-    });
-</script>
+    </script>
+</body>
+</html>
