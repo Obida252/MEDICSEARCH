@@ -8,7 +8,7 @@ class Config:
     
     # Configuration de sécurité
     # SECRET_KEY reste nécessaire pour les flash messages et la protection CSRF
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev_secret_key_change_in_production')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'e8b7c9d2f5a3b1e4c6d8f0a9b2e7d5c1')
     
     # Configuration du cache
     CACHE_TYPE = os.environ.get('CACHE_TYPE', 'simple')

@@ -8,9 +8,12 @@ import hashlib
 from functools import lru_cache
 import os
 import datetime
-from models import init_db, mongo
-import users
+from models import init_db, mongo, User
+import users  # Importer le module users complet
+from users import role_required  # Importer la fonction spécifique role_required
 from config import get_config
+# Import the AI summary module
+from ai_summary import get_or_generate_summary
 
 app = Flask(__name__)
 # Charger la configuration
@@ -57,8 +60,25 @@ def extract_medicine_name(medicine):
 
 @app.route('/')
 def index():
-    """Route principale - page d'accueil"""
-    return render_template('index.html')
+    """Page d'accueil"""
+    # Utiliser la connexion MongoDB déjà établie au lieu de models.mongo.db
+    
+    # Obtenir des statistiques sur la base de données
+    total_medicines = collection.count_documents({})
+    
+    # Récupérer des statistiques de base
+    lab_count = len(db.medicines.distinct("medicine_details.laboratoire"))
+    substance_count = len(db.medicines.distinct("medicine_details.substances_actives"))
+    
+    # Récupérer les médicaments les plus récemment mis à jour pour la section "featured"
+    featured_medicines = list(db.medicines.find({}, {"title": 1, "update_date": 1})
+                           .sort("update_date", -1).limit(3))
+    
+    return render_template('index.html',
+                          total_medicines=total_medicines,
+                          lab_count=lab_count,
+                          substance_count=substance_count,
+                          featured_medicines=featured_medicines)
 
 def extract_filter_options():
     """Extrait les options de filtre disponibles à partir de l'ensemble de la base de données"""
@@ -591,6 +611,23 @@ def medicine_details(id):
         # Ajouter le nom extrait comme attribut du médicament
         medicine['name'] = extract_medicine_name(medicine)
         
+        # Check if we already have a summary, but don't wait for generation
+        # This allows the page to load quickly
+        existing_summary = None
+        if db is not None:
+            try:
+                stored_medicine = db.medicines.find_one(
+                    {"_id": ObjectId(id)}, 
+                    {"ai_summary": 1}
+                )
+                if stored_medicine and 'ai_summary' in stored_medicine:
+                    existing_summary = stored_medicine['ai_summary']
+            except Exception as e:
+                print(f"Error checking for cached summary: {e}")
+        
+        # Set the summary if it exists, otherwise it will be loaded via AJAX
+        medicine['ai_summary'] = existing_summary
+        
         # Vérifier si le médicament est un favori pour l'utilisateur connecté
         is_favorite = False
         comments = []
@@ -607,22 +644,27 @@ def medicine_details(id):
             
             # Récupérer les commentaires pour ce médicament visibles par l'utilisateur
             comments = Comment.get_for_medicine(str(medicine['_id']), user_role)
-            
-            # Ajouter les informations utilisateur à chaque commentaire
-            for comment in comments:
-                try:
-                    comment_user = User.get_by_id(comment['user_id'])
-                    if comment_user:
-                        comment['user'] = {
-                            'first_name': comment_user.get('first_name', 'Utilisateur'),
-                            'last_name': comment_user.get('last_name', '')
-                        }
-                except Exception as e:
-                    print(f"Erreur lors de la récupération des données utilisateur: {e}")
         else:
             # Même pour les utilisateurs non connectés, récupérer les commentaires publics
             from models import Comment
             comments = Comment.get_for_medicine(str(medicine['_id']))
+        
+        # Ajouter les informations utilisateur à chaque commentaire, que l'utilisateur soit connecté ou non
+        for comment in comments:
+            try:
+                comment_user = User.get_by_id(comment['user_id'])
+                if comment_user:
+                    comment['user'] = {
+                        'first_name': comment_user.get('first_name', 'Utilisateur'),
+                        'last_name': comment_user.get('last_name', '')
+                    }
+            except Exception as e:
+                print(f"Erreur lors de la récupération des données utilisateur: {e}")
+                # Si on ne peut pas récupérer l'utilisateur, on met un placeholder
+                comment['user'] = {
+                    'first_name': 'Utilisateur',
+                    'last_name': ''
+                }
         
         # S'assurer que chaque élément de contenu a un champ html_content
         if 'sections' in medicine:
@@ -910,12 +952,79 @@ def inject_user_and_date():
         'now': datetime.datetime.now()
     }
 
+@app.route('/api/toggle-favorite/<medicine_id>', methods=['POST'])
+def toggle_favorite(medicine_id):
+    """Ajoute ou supprime un médicament des favoris de l'utilisateur connecté"""
+    # Vérifier si l'utilisateur est connecté
+    if 'user_id' not in request.cookies:
+        return jsonify({"success": False, "message": "Utilisateur non connecté"}), 401
+    
+    user_id = request.cookies.get('user_id')
+    
+    try:
+        # Vérifier si le médicament existe
+        medicine = collection.find_one({'_id': ObjectId(medicine_id)})
+        if not medicine:
+            return jsonify({"success": False, "message": "Médicament non trouvé"}), 404
+        
+        from models import Interaction
+        
+        # Vérifier si le médicament est déjà un favori
+        if Interaction.is_favorite(user_id, medicine_id):
+            # Supprimer des favoris
+            if Interaction.remove_favorite(user_id, medicine_id):
+                return jsonify({"success": True, "is_favorite": False})
+            else:
+                return jsonify({"success": False, "message": "Erreur lors de la suppression des favoris"}), 500
+        else:
+            # Ajouter aux favoris
+            if Interaction.add_favorite(user_id, medicine_id):
+                return jsonify({"success": True, "is_favorite": True})
+            else:
+                return jsonify({"success": False, "message": "Erreur lors de l'ajout aux favoris"}), 500
+    except Exception as e:
+        print(f"Erreur lors de la gestion des favoris: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
+@app.route('/api/medicine-summary/<id>')
+def get_medicine_summary(id):
+    """API endpoint to get the AI summary of a medicine"""
+    try:
+        # First check if we already have the summary in the database
+        stored_medicine = db.medicines.find_one(
+            {'_id': ObjectId(id)},
+            {'ai_summary': 1}
+        )
+        
+        if stored_medicine and 'ai_summary' in stored_medicine and stored_medicine['ai_summary']:
+            return jsonify({
+                "success": True,
+                "summary": stored_medicine['ai_summary']
+            })
+        
+        # If not, generate a new summary
+        medicine = collection.find_one({'_id': ObjectId(id)})
+        if not medicine:
+            return jsonify({"success": False, "message": "Médicament non trouvé"}), 404
+        
+        # Generate summary but don't wait for it in the page load
+        summary = get_or_generate_summary(medicine, db=db)
+        
+        # Return the generated summary
+        return jsonify({
+            "success": True,
+            "summary": summary
+        })
+    except Exception as e:
+        print(f"Error retrieving medicine summary: {e}")
+        return jsonify({"success": False, "message": str(e)}), 500
+
 if __name__ == '__main__':
     # Initialiser la base de données
     init_db(app)
     
     # Initialiser le système d'utilisateurs
-    users.init_users(app)  # Changé de "init_users(app)" à "users.init_users(app)"
+    users.init_users(app)  # Maintenant users est correctement défini
     
     app.run(debug=app.config['DEBUG'])
 

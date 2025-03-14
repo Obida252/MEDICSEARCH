@@ -7,6 +7,90 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/medicine_details.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        /* Styles existants... */
+        
+        .medicine-actions {
+            margin-top: 10px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline-danger {
+            background-color: transparent;
+            color: white;
+            border: 1px solid white;
+        }
+        
+        .btn-outline-danger:hover {
+            background-color: #ffebee;
+            color: #e53935;
+        }
+        
+        .btn-danger {
+            background-color: #e53935;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background-color: #c62828;
+        }
+        
+        /* Pour corriger l'icône du cœur dans Font Awesome 5 */
+        .fas.fa-heart {
+            color: white;
+        }
+        
+        .far.fa-heart {
+            color: white;
+        }
+
+        /* Mettre à jour le style du bouton favori pour qu'il soit une icône de cœur */
+        .favorite-icon-container {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .favorite-icon-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .favorite-icon {
+            font-size: 1.2rem;
+            margin-right: 8px;
+            transition: color 0.3s;
+        }
+        
+        .favorite-icon.favorited {
+            color: #e53935;
+        }
+        
+        .favorite-icon.not-favorited {
+            color: #e53935;
+        }
+        
+        .favorite-text {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+    </style>
 </head>
 <body>
     {% with active_page='medicine' %}
@@ -20,6 +104,16 @@
                 <div class="medicine-meta">
                     <span class="update-info">Mise à jour: {{ medicine['update_date'] }}</span>
                     <span class="source-url">Source: <a href="{{ medicine['url'] }}" target="_blank">Base de données publique des médicaments</a></span>
+                    
+                    <!-- Icône de favoris avec texte et fond blanc -->
+                    {% if g.user %}
+                    <div class="medicine-actions">
+                        <div id="favorite-icon-container" class="favorite-icon-container">
+                            <i id="favorite-icon" class="favorite-icon {{ 'fas fa-heart favorited' if is_favorite else 'far fa-heart not-favorited' }}"></i>
+                            <span id="favorite-text" class="favorite-text">{{ "Retirer des favoris" if is_favorite else "Ajouter aux favoris" }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -66,11 +160,30 @@
                                         <div class="plain-text"><strong>Laboratoire:</strong> {{ medicine['medicine_details']['laboratoire'] }}</div>
                                     {% endif %}
                                 </div>
-                                
-                                <div class="summary-section" style="text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-top: 20px;">
-                                    <i class="fas fa-robot" style="font-size: 2rem; color: #666; margin-bottom: 15px;"></i>
-                                    <h4>Résumé du médicament avec IA à venir</h4>
-                                    <p style="color: #666;">Cette fonctionnalité sera bientôt disponible.</p>
+        
+                                <div class="summary-section ai-summary" style="padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-top: 20px;">
+                                    {% if medicine.ai_summary %}
+                                        <div class="ai-summary-content">
+                                            <div class="ai-summary-header">
+                                                <i class="fas fa-robot" style="font-size: 1.2rem; color: #666; margin-right: 10px;"></i>
+                                                <h4>Résumé généré par IA</h4>
+                                            </div>
+                                            <div class="ai-summary-text">
+                                                {{ medicine.ai_summary|safe }}
+                                            </div>
+                                            <div class="ai-disclaimer" style="font-size: 0.8rem; color: #666; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+                                                <i class="fas fa-info-circle"></i> Ce résumé est généré automatiquement et pourrait contenir des imprécisions. Consultez toujours un professionnel de santé.
+                                                <span class="ai-model">Modèle utilisé: Mistral Small</span>
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div id="ai-loading" style="text-align: center;">
+                                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #666; margin-bottom: 15px;"></i>
+                                            <p>Génération du résumé en cours...</p>
+                                            <p class="load-status" style="font-size: 0.8rem; color: #666;">Veuillez patienter...</p>
+                                            <p class="ai-model-info" style="font-size: 0.8rem; color: #666; margin-top: 10px;">Modèle utilisé: Mistral Small</p>
+                                        </div>
+                                    {% endif %}
                                 </div>
                             {% else %}
                                 <div class="no-data-message">
@@ -351,7 +464,6 @@
                             <!-- Liste des commentaires -->
                             <div class="comments-list">
                                 <h4>{{ comments|length }} commentaire{% if comments|length != 1 %}s{% endif %}</h4>
-                                
                                 {% if comments %}
                                     {% for comment in comments %}
                                         <div class="comment" id="comment-{{ comment._id }}">
@@ -386,7 +498,6 @@
                                             <div class="comment-content">
                                                 {{ comment.content }}
                                             </div>
-                                            
                                             {% if g.user and (g.user._id|string == comment.user_id|string or g.user.role >= 4) %}
                                                 <div class="comment-actions">
                                                     <button class="btn-edit-comment" onclick="showEditCommentForm('{{ comment._id }}')">
@@ -473,7 +584,7 @@
         </section>
     </main>
 
-    {% with now=now|default({"year": 2023}) %}
+    {% with now=now|default({"year": 2025}) %}
     {% include 'components/footer.html' %}
     {% endwith %}
     
@@ -519,6 +630,113 @@
         function hideEditCommentForm(commentId) {
             document.getElementById(`edit-form-${commentId}`).style.display = 'none';
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const favoriteIcon = document.getElementById('favorite-icon');
+            const favoriteText = document.getElementById('favorite-text');
+            const favoriteContainer = document.getElementById('favorite-icon-container');
+            
+            if (favoriteContainer) {
+                favoriteContainer.addEventListener('click', function() {
+                    // Vérifier si l'utilisateur est connecté
+                    {% if g.user %}
+                        // Appel API pour basculer l'état du favori
+                        fetch('/api/toggle-favorite/{{ medicine._id }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Mettre à jour l'apparence de l'icône
+                                if (data.is_favorite) {
+                                    favoriteIcon.classList.remove('far', 'not-favorited');
+                                    favoriteIcon.classList.add('fas', 'favorited');
+                                    favoriteText.textContent = "Retirer des favoris";
+                                } else {
+                                    favoriteIcon.classList.remove('fas', 'favorited');
+                                    favoriteIcon.classList.add('far', 'not-favorited');
+                                    favoriteText.textContent = "Ajouter aux favoris";
+                                }
+                            } else {
+                                alert("Erreur: " + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erreur:', error);
+                            alert("Une erreur s'est produite lors de l'ajout aux favoris.");
+                        });
+                    {% else %}
+                        // Rediriger vers la page de connexion
+                        window.location.href = "{{ url_for('users.login') }}?next={{ request.path }}";
+                    {% endif %}
+                });
+            }
+
+            // Check if we need to load the AI summary
+            const aiLoading = document.getElementById('ai-loading');
+            if (aiLoading) {
+                let attempts = 0;
+                const maxAttempts = 10;
+                const loadStatus = aiLoading.querySelector('.load-status');
+                
+                const checkSummary = function() {
+                    attempts++;
+                    if (attempts <= maxAttempts) {
+                        loadStatus.textContent = `Veuillez patienter... (tentative ${attempts}/${maxAttempts})`;
+                        
+                        // Make an AJAX request to get the current summary
+                        fetch('/api/medicine-summary/{{ medicine._id }}')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.summary) {
+                                    // Replace the loading element with the summary
+                                    const aiSummarySection = document.querySelector('.ai-summary');
+                                    aiSummarySection.innerHTML = `
+                                        <div class="ai-summary-content">
+                                            <div class="ai-summary-header">
+                                                <i class="fas fa-robot" style="font-size: 1.2rem; color: #666; margin-right: 10px;"></i>
+                                                <h4>Résumé généré par IA</h4>
+                                            </div>
+                                            <div class="ai-summary-text">
+                                                ${data.summary}
+                                            </div>
+                                            <div class="ai-disclaimer" style="font-size: 0.8rem; color: #666; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px;">
+                                                <i class="fas fa-info-circle"></i> Ce résumé est généré automatiquement et pourrait contenir des imprécisions. Consultez toujours un professionnel de santé.
+                                                <span class="ai-model">Modèle utilisé: Mistral Small</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                } else if (attempts < maxAttempts) {
+                                    // If no summary yet and we haven't reached max attempts, try again in 5 seconds
+                                    setTimeout(checkSummary, 5000);
+                                } else {
+                                    // Max attempts reached, show error
+                                    loadStatus.textContent = "La génération du résumé a pris trop de temps. Veuillez rafraîchir la page.";
+                                    loadStatus.style.color = "#d32f2f";
+                                    aiLoading.querySelector('i').classList.remove('fa-spin');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error checking summary:', error);
+                                if (attempts < maxAttempts) {
+                                    // Try again in case of network error
+                                    setTimeout(checkSummary, 5000);
+                                } else {
+                                    loadStatus.textContent = "Erreur lors de la récupération du résumé.";
+                                    loadStatus.style.color = "#d32f2f";
+                                    aiLoading.querySelector('i').classList.remove('fa-spin');
+                                }
+                            });
+                    }
+                };
+                
+                // Start checking after 1 second
+                setTimeout(checkSummary, 1000);
+            }
+        });
     </script>
 </body>
 </html>

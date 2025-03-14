@@ -369,14 +369,11 @@ def toggle_favorite(medicine_id):
 @users_bp.route('/favorites')
 @login_required
 def favorites():
-    """Liste des médicaments favoris de l'utilisateur"""
-    user_id = request.cookies.get('user_id')
-    favorite_ids = models.Interaction.get_favorites(user_id)
+    """Affiche les médicaments favoris de l'utilisateur"""
+    user_id = g.user['_id']
     
-    # Récupérer les détails des médicaments favoris
-    from .app import collection  # Importer la collection depuis app.py
-    from bson.objectid import ObjectId
-    favorites = list(collection.find({"_id": {"$in": [ObjectId(id) for id in favorite_ids]}}))
+    from models import Interaction
+    favorites = Interaction.get_user_favorites(str(user_id))
     
     return render_template('user/favorites.html', favorites=favorites)
 

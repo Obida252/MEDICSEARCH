@@ -477,6 +477,54 @@ class Interaction:
             "type": Interaction.TYPE_FAVORITE
         }) is not None
 
+    @staticmethod
+    def add_favorite(user_id, medicine_id):
+        """Ajoute un médicament aux favoris d'un utilisateur"""
+        result = mongo.db.interactions.update_one(
+            {"user_id": user_id, "medicine_id": medicine_id},
+            {"$set": {"type": "favorite", "created_at": datetime.now()}},
+            upsert=True
+        )
+        return result.modified_count > 0 or result.upserted_id is not None
+    
+    @staticmethod
+    def remove_favorite(user_id, medicine_id):
+        """Supprime un médicament des favoris d'un utilisateur"""
+        result = mongo.db.interactions.delete_one(
+            {"user_id": user_id, "medicine_id": medicine_id, "type": "favorite"}
+        )
+        return result.deleted_count > 0
+    
+    @staticmethod
+    def is_favorite(user_id, medicine_id):
+        """Vérifie si un médicament est dans les favoris d'un utilisateur"""
+        interaction = mongo.db.interactions.find_one(
+            {"user_id": user_id, "medicine_id": medicine_id, "type": "favorite"}
+        )
+        return interaction is not None
+    
+    @staticmethod
+    def get_user_favorites(user_id):
+        """Récupère tous les médicaments favoris d'un utilisateur"""
+        favorites = list(mongo.db.interactions.find(
+            {"user_id": user_id, "type": "favorite"}
+        ).sort("created_at", -1))
+        
+        # Récupérer les détails des médicaments pour chaque favori
+        medicine_ids = [ObjectId(fav["medicine_id"]) for fav in favorites]
+        medicines = list(mongo.db.medicines.find({"_id": {"$in": medicine_ids}}))
+        
+        # Organiser les médicaments sous forme de dictionnaire pour un accès facile
+        medicines_dict = {str(med["_id"]): med for med in medicines}
+        
+        # Ajouter les détails des médicaments aux favoris
+        for favorite in favorites:
+            med_id = favorite["medicine_id"]
+            if med_id in medicines_dict:
+                favorite["medicine"] = medicines_dict[med_id]
+        
+        return favorites
+
 
 class Log:
     """Model for the logs collection in MongoDB"""

@@ -27,20 +27,20 @@
                 <h2>NOTRE BASE DE DONNÉES</h2>
                 <div class="stat-grid">
                     <div class="stat-card">
-                        <span class="stat-number">2K+</span>
+                        <span class="stat-number">{{ total_medicines|default('2K+') }}</span>
                         <span class="stat-label">MÉDICAMENTS</span>
                     </div>
                     <div class="stat-card">
-                        <span class="stat-number">100%</span>
-                        <span class="stat-label">DONNÉES FIABLES</span>
+                        <span class="stat-number">{{ lab_count|default('100+') }}</span>
+                        <span class="stat-label">LABORATOIRES</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number">{{ substance_count|default('20+') }}</span>
+                        <span class="stat-label">SUBSTANCES ACTIVES</span>
                     </div>
                     <div class="stat-card">
                         <span class="stat-number">24/7</span>
                         <span class="stat-label">ACCESSIBILITÉ</span>
-                    </div>
-                    <div class="stat-card">
-                        <span class="stat-number">20+</span>
-                        <span class="stat-label">CATÉGORIES</span>
                     </div>
                 </div>
             </div>
@@ -58,7 +58,7 @@
                         </div>
                     </div>
                     <div class="attraction">
-                        <img src="https://images.unsplash.com/photo-1585435557343-3b348a90fe8a?auto=format&fit=crop&w=600&q=80" alt="Informations détaillées">
+                        <img src="https://images.unsplash.com/photo-1532938911079-1b06ac7ceec7?auto=format&fit=crop&w=600&q=80" alt="Informations détaillées">
                         <h3>INFORMATIONS DÉTAILLÉES</h3>
                         <div class="stats">
                             <span class="rating">Données complètes</span>
