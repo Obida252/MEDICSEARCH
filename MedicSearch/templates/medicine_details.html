@@ -542,11 +542,11 @@
                                             </div>
                                         </div>
                                     {% else %}
-                                        <div id="ai-loading" style="text-align: center;">
-                                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #666; margin-bottom: 15px;"></i>
-                                            <p>Génération du résumé en cours...</p>
-                                            <p class="load-status" style="font-size: 0.8rem; color: #666;">Veuillez patienter...</p>
-                                            <p class="ai-model-info" style="font-size: 0.8rem; color: #666; margin-top: 10px;">Modèle utilisé: mistral-small-latest</p>
+                                        <div class="ai-loading" id="ai-loading">
+                                            <div class="loading-spinner">
+                                                <div class="spinner"></div>
+                                                <p class="load-status">Génération du résumé en cours...</p>
+                                            </div>
                                         </div>
                                     {% endif %}
                                 </div>
@@ -1063,12 +1063,13 @@
             if (aiLoading) {
                 let attempts = 0;
                 const maxAttempts = 10;
+                
                 const loadStatus = aiLoading.querySelector('.load-status');
                 
                 const checkSummary = function() {
                     attempts++;
                     if (attempts <= maxAttempts) {
-                        loadStatus.textContent = `Veuillez patienter... (tentative ${attempts}/${maxAttempts})`;
+                        loadStatus.textContent = `Génération en cours... (${attempts}/${maxAttempts})`;
                         
                         // Make an AJAX request to get the current summary
                         fetch('/api/medicine-summary/{{ medicine._id }}')
@@ -1095,7 +1096,7 @@
                                     // Max attempts reached, show error
                                     loadStatus.textContent = "La génération du résumé a pris trop de temps. Veuillez rafraîchir la page.";
                                     loadStatus.style.color = "#d32f2f";
-                                    aiLoading.querySelector('i').classList.remove('fa-spin');
+                                    aiLoading.querySelector('.spinner').style.display = 'none';
                                 }
                             })
                             .catch(error => {
@@ -1106,7 +1107,7 @@
                                 } else {
                                     loadStatus.textContent = "Erreur lors de la récupération du résumé.";
                                     loadStatus.style.color = "#d32f2f";
-                                    aiLoading.querySelector('i').classList.remove('fa-spin');
+                                    aiLoading.querySelector('.spinner').style.display = 'none';
                                 }
                             });
                     }

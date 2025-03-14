@@ -14,34 +14,36 @@
         }
         
         .hero {
-            background: linear-gradient(135deg, rgba(0, 123, 255, 0.85) 0%, rgba(0, 86, 179, 0.85) 100%), 
-                        url('https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=1920&q=80');
+            background: linear-gradient(135deg, rgba(33, 37, 41, 0.9) 0%, rgba(23, 26, 29, 0.9) 100%),
+                        url("https://images.unsplash.com/photo-1471864190281-a93a3070b6de?ixlib=rb-4.0.3&auto=format&fit=crop&w=1500&q=80");
             background-size: cover;
             background-position: center;
-            padding: 120px 0;
+            padding: 10px 0; /* Réduit la hauteur du fond bleu */
             border-radius: 0 0 30px 30px;
-            margin-bottom: 60px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            margin-bottom: 0px; /* Amène la section suivante (ex: "NOTRE BASE DE DONNÉES") plus haut */
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            max-height: 150px; /* Ajustez cette valeur selon vos besoins */
+            overflow: hidden; /* Pour cacher le contenu qui dépasse */
         }
         
         .hero-content {
-            max-width: 800px;
+            max-width: 850px; /* Increased from 800px to 850px */
             margin: 0 auto;
             text-align: center;
             padding: 0 20px;
         }
         
         .hero h2 {
-            font-size: 3rem;
-            margin-bottom: 20px;
+            font-size: 2.5rem; /* Increased from 2.3rem */
+            margin-bottom: 12px;
             color: white;
             text-shadow: 0 2px 4px rgba(0,0,0,0.2);
             border-bottom: none;
         }
         
         .hero p {
-            font-size: 1.5rem;
-            margin-bottom: 30px;
+            font-size: 1.25rem; /* Increased from 1.2rem */
+            margin-bottom: 18px;
             color: rgba(255,255,255,0.9);
         }
         
