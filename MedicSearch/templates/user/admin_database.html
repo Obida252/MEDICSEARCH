@@ -366,7 +366,11 @@
                             <div class="update-item">
                                 <div class="update-title">{{ med.title }}</div>
                                 <div class="update-date">
-                                    <i class="fas fa-calendar-alt"></i> Mise à jour: {{ med.update_date }}
+                                    <i class="fas fa-calendar-alt"></i> Mise à jour ANSM: {{ med.update_date }}
+                                    {% if med.last_scraped %}
+                                    <br>
+                                    <i class="fas fa-sync"></i> Dernière analyse: {{ med.last_scraped.strftime('%d/%m/%Y à %H:%M') }}
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endfor %}

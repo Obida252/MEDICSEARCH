@@ -477,7 +477,7 @@ def admin_database():
     # Obtenir des statistiques sur la base de données
     total_medicines = db.medicines.count_documents({})
     
-    # Récupérer les dates des 5 dernières mises à jour de médicaments
+    # Récupérer les médicaments les plus récemment scrapés
     latest_updates = list(db.medicines.find({}, {"title": 1, "update_date": 1, "last_scraped": 1})
                          .sort("last_scraped", -1).limit(5))
     

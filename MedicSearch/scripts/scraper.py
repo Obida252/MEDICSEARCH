@@ -267,6 +267,7 @@ def run_scraper(db_connection=None, source_file=None, max_urls=None):
                         "forme": extract_pharmaceutical_form(soup)
                     },
                     "update_date": update_date,
+                    "last_scraped": datetime.datetime.now()  # Ajout de la date de scraping
                 }
                 
                 # Extraire les sections
@@ -285,7 +286,11 @@ def run_scraper(db_connection=None, source_file=None, max_urls=None):
                 
                 if existing:
                     if "content_hash" in existing and existing["content_hash"] == content_hash:
-                        # Le contenu n'a pas changé, ne rien mettre à jour
+                        # Le contenu n'a pas changé, mettre à jour uniquement la date de scraping
+                        collection.update_one(
+                            {"_id": existing["_id"]},
+                            {"$set": {"last_scraped": datetime.datetime.now()}}
+                        )
                         stats['unchanged'] += 1
                         progress['unchanged'] += 1
                         print(f"Médicament inchangé: {main_title}")
